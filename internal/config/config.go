@@ -10,8 +10,7 @@ import (
 	"github.com/BurntSushi/toml"
 )
 
-// Config holds all tunables for the core service. The session/completion knobs
-// are part of the config contract and loaded here; they are not yet consumed.
+// Config holds all tunables for the core service.
 type Config struct {
 	HTTPAddr               string  `toml:"http_addr"`
 	TCPAddr                string  `toml:"tcp_addr"`

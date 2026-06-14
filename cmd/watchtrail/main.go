@@ -20,18 +20,29 @@ import (
 )
 
 func main() {
-	if len(os.Args) < 2 || os.Args[1] != "serve" {
-		fmt.Fprintln(os.Stderr, "usage: watchtrail serve [-config path]")
-		os.Exit(2)
+	if len(os.Args) < 2 {
+		usage()
 	}
-
-	fs := flag.NewFlagSet("serve", flag.ExitOnError)
-	cfgPath := fs.String("config", "watchtrail.toml", "path to config file")
-	_ = fs.Parse(os.Args[2:])
-
-	if err := runServe(*cfgPath); err != nil {
-		log.Fatalf("watchtrail: %v", err)
+	switch os.Args[1] {
+	case "serve":
+		fs := flag.NewFlagSet("serve", flag.ExitOnError)
+		cfgPath := fs.String("config", "watchtrail.toml", "path to config file")
+		_ = fs.Parse(os.Args[2:])
+		if err := runServe(*cfgPath); err != nil {
+			log.Fatalf("watchtrail: %v", err)
+		}
+	case "recent":
+		if err := runRecent(os.Args[2:]); err != nil {
+			log.Fatalf("watchtrail: %v", err)
+		}
+	default:
+		usage()
 	}
+}
+
+func usage() {
+	fmt.Fprintln(os.Stderr, "usage: watchtrail <serve|recent> [flags]")
+	os.Exit(2)
 }
 
 func runServe(cfgPath string) error {
