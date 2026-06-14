@@ -80,5 +80,7 @@ type Repository interface {
 	EventsForSession(ctx context.Context, sessionID string) ([]Event, error)
 	// UpsertSession inserts or updates a session row (created_at preserved on update).
 	UpsertSession(ctx context.Context, s Session) error
+	// RecentSessions returns the most recent sessions joined to media title.
+	RecentSessions(ctx context.Context, limit int) ([]SessionView, error)
 	Close() error
 }

@@ -93,6 +93,51 @@ func TestLatestSessionForMissing(t *testing.T) {
 	}
 }
 
+func TestRecentSessions(t *testing.T) {
+	repo := openTemp(t)
+	ctx := context.Background()
+	mediaID := seedMedia(t, repo, "a", nil)
+	now := time.Date(2026, 6, 14, 10, 0, 0, 0, time.UTC)
+
+	older := Session{
+		ID: "old", MediaItemID: mediaID, SourceKind: "vlc", SourceInstance: "laptop",
+		StartedAt: now, EndedAt: now, WatchedSeconds: 10, CreatedAt: now, UpdatedAt: now,
+	}
+	newer := Session{
+		ID: "new", MediaItemID: mediaID, SourceKind: "vlc", SourceInstance: "laptop",
+		StartedAt: now.Add(time.Hour), EndedAt: now.Add(time.Hour), WatchedSeconds: 20,
+		Completed: true, CreatedAt: now, UpdatedAt: now,
+	}
+	for _, s := range []Session{older, newer} {
+		if err := repo.UpsertSession(ctx, s); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	views, err := repo.RecentSessions(ctx, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(views) != 2 {
+		t.Fatalf("len = %d, want 2", len(views))
+	}
+	if views[0].WatchedSeconds != 20 || !views[0].Completed { // newest first
+		t.Errorf("views[0] = %+v, want newest", views[0])
+	}
+	if views[0].Title != "Movie a" || views[0].SourceKind != "vlc" {
+		t.Errorf("join wrong: %+v", views[0])
+	}
+
+	// limit is honored
+	views, err = repo.RecentSessions(ctx, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(views) != 1 {
+		t.Fatalf("limited len = %d, want 1", len(views))
+	}
+}
+
 func TestSetEventSessionAndEventsForSession(t *testing.T) {
 	repo := openTemp(t)
 	ctx := context.Background()

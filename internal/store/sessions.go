@@ -115,6 +115,39 @@ func (r *SQLiteRepo) EventsForSession(ctx context.Context, sessionID string) ([]
 	return out, rows.Err()
 }
 
+func (r *SQLiteRepo) RecentSessions(ctx context.Context, limit int) ([]SessionView, error) {
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT s.started_at, COALESCE(m.title, m.external_id), s.source_kind,
+		        s.watched_seconds, s.completed
+		   FROM watch_session s
+		   JOIN media_item m ON m.id = s.media_item_id
+		  WHERE s.deleted_at IS NULL
+		  ORDER BY s.started_at DESC
+		  LIMIT ?`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []SessionView
+	for rows.Next() {
+		var v SessionView
+		var started string
+		var completed int
+		if err := rows.Scan(&started, &v.Title, &v.SourceKind, &v.WatchedSeconds, &completed); err != nil {
+			return nil, err
+		}
+		v.Completed = completed != 0
+		t, perr := parseTime(started)
+		if perr != nil {
+			return nil, perr
+		}
+		v.StartedAt = t
+		out = append(out, v)
+	}
+	return out, rows.Err()
+}
+
 func (r *SQLiteRepo) UpsertSession(ctx context.Context, s Session) error {
 	_, err := r.db.ExecContext(ctx,
 		`INSERT INTO watch_session
