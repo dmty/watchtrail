@@ -1,16 +1,22 @@
 package store
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
+	"time"
 
 	_ "modernc.org/sqlite"
+
+	"watchtrail/internal/ids"
 )
 
 // SQLiteRepo is the pure-Go SQLite implementation of Repository.
 type SQLiteRepo struct {
 	db *sql.DB
 }
+
+var _ Repository = (*SQLiteRepo)(nil)
 
 // Open opens (creating if needed) the SQLite database at path, applies pragmas
 // and migrations, and returns a ready Repository.
@@ -40,3 +46,75 @@ func Open(path string) (*SQLiteRepo, error) {
 }
 
 func (r *SQLiteRepo) Close() error { return r.db.Close() }
+
+func nullStr(s string) any {
+	if s == "" {
+		return nil
+	}
+	return s
+}
+
+func nullJSON(b []byte) any {
+	if len(b) == 0 {
+		return nil
+	}
+	return string(b)
+}
+
+func (r *SQLiteRepo) FindOrCreateMediaItem(ctx context.Context, m MediaItem) (string, error) {
+	var id string
+	err := r.db.QueryRowContext(ctx,
+		`SELECT id FROM media_item WHERE identity_key = ?`, m.IdentityKey).Scan(&id)
+	if err == nil {
+		return id, nil
+	}
+	if err != sql.ErrNoRows {
+		return "", err
+	}
+
+	id = ids.NewUUID()
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	kind := m.Kind
+	if kind == "" {
+		kind = "unknown"
+	}
+	_, err = r.db.ExecContext(ctx,
+		`INSERT INTO media_item
+		   (id, source_kind, external_id, identity_key, kind, title, url_or_path,
+		    duration_seconds, metadata, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		 ON CONFLICT(identity_key) DO NOTHING`,
+		id, m.SourceKind, m.ExternalID, m.IdentityKey, kind,
+		nullStr(m.Title), nullStr(m.URLOrPath), m.DurationSeconds, nullJSON(m.Metadata),
+		now, now)
+	if err != nil {
+		return "", err
+	}
+	// Re-read: covers the race where a concurrent insert won the unique key.
+	if err := r.db.QueryRowContext(ctx,
+		`SELECT id FROM media_item WHERE identity_key = ?`, m.IdentityKey).Scan(&id); err != nil {
+		return "", err
+	}
+	return id, nil
+}
+
+func (r *SQLiteRepo) InsertEvent(ctx context.Context, e Event) error {
+	_, err := r.db.ExecContext(ctx,
+		`INSERT INTO watch_event
+		   (id, media_item_id, source_kind, source_instance, type,
+		    position_seconds, occurred_at, received_at, session_id, raw)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)
+		 ON CONFLICT(id) DO NOTHING`,
+		e.ID, e.MediaItemID, e.SourceKind, nullStr(e.SourceInstance), e.Type,
+		e.PositionSeconds,
+		e.OccurredAt.UTC().Format(time.RFC3339Nano),
+		e.ReceivedAt.UTC().Format(time.RFC3339Nano),
+		nullJSON(e.Raw))
+	return err
+}
+
+func (r *SQLiteRepo) CountEvents(ctx context.Context) (int, error) {
+	var n int
+	err := r.db.QueryRowContext(ctx, `SELECT COUNT(1) FROM watch_event`).Scan(&n)
+	return n, err
+}
