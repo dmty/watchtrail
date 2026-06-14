@@ -36,6 +36,31 @@ type Event struct {
 	Raw             json.RawMessage
 }
 
+// Session mirrors a watch_session row (a derived viewing).
+type Session struct {
+	ID                 string
+	MediaItemID        string
+	SourceKind         string
+	SourceInstance     string
+	StartedAt          time.Time
+	EndedAt            time.Time
+	WatchedSeconds     int
+	MaxPositionSeconds float64
+	Completed          bool
+	EventCount         int
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+}
+
+// SessionView is a session joined to its media title, for list displays.
+type SessionView struct {
+	StartedAt      time.Time
+	Title          string
+	SourceKind     string
+	WatchedSeconds int
+	Completed      bool
+}
+
 // Repository is the persistence boundary. Minimal surface for now.
 type Repository interface {
 	// FindOrCreateMediaItem returns the id of the media_item with m.IdentityKey,
@@ -45,5 +70,15 @@ type Repository interface {
 	InsertEvent(ctx context.Context, e Event) error
 	// CountEvents returns the number of watch_event rows (test/health helper).
 	CountEvents(ctx context.Context) (int, error)
+	// MediaDuration returns the media item's duration in seconds, or nil if unknown.
+	MediaDuration(ctx context.Context, mediaItemID string) (*int, error)
+	// LatestSessionFor returns the most recent session for a media/instance key.
+	LatestSessionFor(ctx context.Context, mediaItemID, sourceInstance string) (Session, bool, error)
+	// SetEventSession backfills a stored event's session_id.
+	SetEventSession(ctx context.Context, eventID, sessionID string) error
+	// EventsForSession returns a session's events ordered by occurred_at.
+	EventsForSession(ctx context.Context, sessionID string) ([]Event, error)
+	// UpsertSession inserts or updates a session row (created_at preserved on update).
+	UpsertSession(ctx context.Context, s Session) error
 	Close() error
 }
