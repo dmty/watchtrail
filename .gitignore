@@ -1,0 +1,4 @@
+/watchtrail
+*.db
+*.db-wal
+*.db-shm
