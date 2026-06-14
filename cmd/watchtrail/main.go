@@ -15,6 +15,7 @@ import (
 
 	"watchtrail/internal/config"
 	"watchtrail/internal/ingest"
+	"watchtrail/internal/sessionize"
 	"watchtrail/internal/store"
 )
 
@@ -45,7 +46,12 @@ func runServe(cfgPath string) error {
 	}
 	defer repo.Close()
 
-	pipeline := ingest.NewPipeline(repo, time.Now)
+	sessCfg := sessionize.Config{
+		SessionGap:          time.Duration(cfg.SessionGapSeconds) * time.Second,
+		CompletionThreshold: cfg.CompletionThreshold,
+		ProgressCadence:     time.Duration(cfg.ProgressCadenceSeconds) * time.Second,
+	}
+	pipeline := ingest.NewPipeline(repo, sessCfg, time.Now)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()

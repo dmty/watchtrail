@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"watchtrail/internal/event"
+	"watchtrail/internal/sessionize"
 	"watchtrail/internal/store"
 )
 
@@ -17,16 +18,22 @@ const maxPositionSeconds = 30 * 24 * 3600
 // Pipeline is the single path every transport feeds. It owns no transport detail.
 type Pipeline struct {
 	repo store.Repository
+	sess *sessionize.Sessionizer
 	now  func() time.Time
 }
 
-// NewPipeline builds a Pipeline. now is injected for deterministic received_at.
-func NewPipeline(repo store.Repository, now func() time.Time) *Pipeline {
-	return &Pipeline{repo: repo, now: now}
+// NewPipeline builds a Pipeline. now is injected for deterministic timestamps;
+// cfg tunes sessionization.
+func NewPipeline(repo store.Repository, cfg sessionize.Config, now func() time.Time) *Pipeline {
+	return &Pipeline{
+		repo: repo,
+		sess: sessionize.New(repo, cfg, now),
+		now:  now,
+	}
 }
 
-// Process validates one raw event, resolves its media item, and persists the
-// event idempotently. raw is stored verbatim for future replay.
+// Process validates one raw event, resolves its media item, persists the event
+// idempotently, then assigns it to a session. raw is stored verbatim for replay.
 func (p *Pipeline) Process(ctx context.Context, raw []byte) error {
 	ev, err := event.Parse(raw)
 	if err != nil {
@@ -38,7 +45,7 @@ func (p *Pipeline) Process(ctx context.Context, raw []byte) error {
 		return err
 	}
 
-	return p.repo.InsertEvent(ctx, store.Event{
+	stored := store.Event{
 		ID:              ev.EventID,
 		MediaItemID:     mediaID,
 		SourceKind:      ev.SourceKind,
@@ -48,7 +55,14 @@ func (p *Pipeline) Process(ctx context.Context, raw []byte) error {
 		OccurredAt:      ev.OccurredAt,
 		ReceivedAt:      p.now().UTC(),
 		Raw:             raw,
-	})
+	}
+	if err := p.repo.InsertEvent(ctx, stored); err != nil {
+		return err
+	}
+	// The event is already persisted (idempotent by event_id), so if sessionization
+	// fails the collector can safely retry: the re-sent event dedups and re-folds.
+	_, err = p.sess.Assign(ctx, stored)
+	return err
 }
 
 // toMediaItem maps a canonical event onto media-item identity. The external_id is

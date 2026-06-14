@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"watchtrail/internal/sessionize"
 	"watchtrail/internal/store"
 )
 
@@ -17,7 +18,8 @@ func newTestPipeline(t *testing.T) (*Pipeline, store.Repository) {
 	}
 	t.Cleanup(func() { _ = repo.Close() })
 	fixed := time.Date(2026, 6, 14, 10, 0, 0, 0, time.UTC)
-	return NewPipeline(repo, func() time.Time { return fixed }), repo
+	cfg := sessionize.Config{SessionGap: 30 * time.Minute, CompletionThreshold: 0.9, ProgressCadence: 30 * time.Second}
+	return NewPipeline(repo, cfg, func() time.Time { return fixed }), repo
 }
 
 const rawEvent = `{
@@ -78,5 +80,31 @@ func TestProcessClampsNegativePosition(t *testing.T) {
 	}
 	if pos != 0 {
 		t.Fatalf("position_seconds = %v, want clamped to 0", pos)
+	}
+}
+
+func TestProcessPopulatesSession(t *testing.T) {
+	p, repo := newTestPipeline(t)
+	ctx := context.Background()
+
+	body := `{"v":1,"event_id":"s1","type":"start","occurred_at":"2026-06-14T09:31:02Z","source_kind":"vlc","source_instance":"laptop","media":{"external_id":"file:abc","duration_seconds":100},"position_seconds":0}`
+	if err := p.Process(ctx, []byte(body)); err != nil {
+		t.Fatalf("Process: %v", err)
+	}
+
+	sr := repo.(*store.SQLiteRepo)
+	var sid string
+	if err := sr.DB().QueryRowContext(ctx, `SELECT session_id FROM watch_event WHERE id='s1'`).Scan(&sid); err != nil {
+		t.Fatal(err)
+	}
+	if sid == "" {
+		t.Fatal("event session_id is empty")
+	}
+	var n int
+	if err := sr.DB().QueryRowContext(ctx, `SELECT COUNT(1) FROM watch_session`).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 1 {
+		t.Fatalf("watch_session rows = %d, want 1", n)
 	}
 }
