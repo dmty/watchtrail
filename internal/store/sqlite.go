@@ -47,6 +47,9 @@ func Open(path string) (*SQLiteRepo, error) {
 
 func (r *SQLiteRepo) Close() error { return r.db.Close() }
 
+// DB exposes the underlying handle for tests and ad-hoc read queries.
+func (r *SQLiteRepo) DB() *sql.DB { return r.db }
+
 func nullStr(s string) any {
 	if s == "" {
 		return nil
