@@ -152,13 +152,86 @@ func handleHealth(repo store.Repository) http.HandlerFunc {
 	}
 }
 
-// Temporary stub stats handlers — replaced with real implementations in the next task.
 func handleStatsSummary(repo store.Repository) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) { writeErr(w, http.StatusNotImplemented, "stats pending") }
+	return func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		from, err := optTime(q, "from")
+		if err != nil {
+			writeErr(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		to, err := optTime(q, "to")
+		if err != nil {
+			writeErr(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		s, err := repo.StatsSummary(r.Context(), from, to)
+		if err != nil {
+			serverErr(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, summaryDTO{
+			From: from, To: to, WatchedSeconds: s.WatchedSeconds,
+			DistinctItems: s.DistinctItems, Sessions: s.Sessions, CompletionRate: s.CompletionRate,
+		})
+	}
 }
+
 func handleStatsBySource(repo store.Repository) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) { writeErr(w, http.StatusNotImplemented, "stats pending") }
+	return func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		from, err := optTime(q, "from")
+		if err != nil {
+			writeErr(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		to, err := optTime(q, "to")
+		if err != nil {
+			writeErr(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		stats, err := repo.StatsBySource(r.Context(), from, to)
+		if err != nil {
+			serverErr(w, err)
+			return
+		}
+		out := make([]sourceStatDTO, 0, len(stats))
+		for _, s := range stats {
+			out = append(out, sourceStatDTO{
+				Source: s.Source, WatchedSeconds: s.WatchedSeconds,
+				Sessions: s.Sessions, CompletionRate: s.CompletionRate,
+			})
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"by_source": out})
+	}
 }
+
 func handleStatsOverTime(repo store.Repository) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) { writeErr(w, http.StatusNotImplemented, "stats pending") }
+	return func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		bucket := q.Get("bucket")
+		if bucket == "" {
+			bucket = "day"
+		}
+		from, err := optTime(q, "from")
+		if err != nil {
+			writeErr(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		to, err := optTime(q, "to")
+		if err != nil {
+			writeErr(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		buckets, err := repo.StatsOverTime(r.Context(), bucket, from, to)
+		if err != nil {
+			writeErr(w, http.StatusBadRequest, err.Error()) // unsupported bucket = bad request
+			return
+		}
+		out := make([]bucketDTO, 0, len(buckets))
+		for _, b := range buckets {
+			out = append(out, bucketDTO{Date: b.Date, WatchedSeconds: b.WatchedSeconds, Sessions: b.Sessions})
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"buckets": out})
+	}
 }
