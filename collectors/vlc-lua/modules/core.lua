@@ -58,4 +58,62 @@ end
 -- the wire). Handles nested objects (the media sub-table).
 M.json_encode = encode
 
+-- mk_event builds one canonical v1 event. full_media is true only for "start",
+-- which must carry title/duration so the core can create the media item.
+local function mk_event(etype, snap, opts, full_media)
+  local media = { external_id = M.external_id(snap.uri) }
+  if full_media then
+    media.kind = "video"
+    media.title = snap.name
+    media.url_or_path = snap.uri
+    if snap.duration and snap.duration > 0 then
+      media.duration_seconds = math.floor(snap.duration + 0.5)
+    end
+  end
+  local ev = {
+    v = 1,
+    event_id = opts.new_id(),
+    type = etype,
+    occurred_at = snap.occurred_at,
+    source_kind = "vlc",
+    source_instance = opts.source_instance,
+    media = media,
+    meta = {},
+  }
+  if snap.position ~= nil then ev.position_seconds = snap.position end
+  return ev
+end
+
+-- step maps a playback snapshot (plus prior state) to zero or more events and
+-- the updated state. Gap-only boundaries with soft stop: see the design.
+function M.step(state, snap, opts)
+  state = state or {}
+  local events = {}
+  local status = snap.status or "stopped"
+
+  if status == "playing" then
+    if snap.uri ~= state.last_uri then
+      events[#events + 1] = mk_event("start", snap, opts, true)
+      state.last_uri = snap.uri
+    elseif state.last_status == "paused" then
+      events[#events + 1] = mk_event("resume", snap, opts, false)
+    else
+      events[#events + 1] = mk_event("progress", snap, opts, false)
+    end
+  elseif status == "paused" then
+    if state.last_status == "playing" and state.last_uri then
+      events[#events + 1] = mk_event("pause", snap, opts, false)
+    end
+  else -- stopped
+    if state.last_uri and state.last_status ~= "stopped" then
+      local stopsnap = { uri = state.last_uri, position = snap.position, occurred_at = snap.occurred_at }
+      events[#events + 1] = mk_event("stop", stopsnap, opts, false)
+      state.last_uri = nil
+    end
+  end
+
+  state.last_status = status
+  return events, state
+end
+
 return M
