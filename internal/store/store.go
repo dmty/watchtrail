@@ -98,6 +98,7 @@ type Repository interface {
 	AllEvents(ctx context.Context) ([]Event, error)
 	AllSessions(ctx context.Context) ([]Session, error)
 	AllMediaDurations(ctx context.Context) (map[string]*int, error)
+	ReplaceAllSessions(ctx context.Context, writes []SessionWrite) error
 
 	Close() error
 }

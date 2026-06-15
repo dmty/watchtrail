@@ -43,3 +43,46 @@ func TestAllEventsAndDurations(t *testing.T) {
 		t.Fatal("missing m1 duration key")
 	}
 }
+
+func TestReplaceAllSessions(t *testing.T) {
+	r := openTemp(t)
+	ctx := context.Background()
+	base := time.Date(2026, 6, 15, 12, 0, 0, 0, time.UTC)
+	seedEvent(t, r, "e1", "m1", "vlc", "start", 0, base)
+	seedEvent(t, r, "e2", "m1", "vlc", "progress", 30, base.Add(30*time.Second))
+
+	writes := []SessionWrite{{
+		Session: Session{
+			ID: "new-sess", MediaItemID: "m1", SourceKind: "vlc", SourceInstance: "i1",
+			StartedAt: base, EndedAt: base.Add(30 * time.Second), WatchedSeconds: 30,
+			MaxPositionSeconds: 30, Completed: false, EventCount: 2,
+			CreatedAt: base, UpdatedAt: base,
+		},
+		EventIDs: []string{"e1", "e2"},
+	}}
+	if err := r.ReplaceAllSessions(ctx, writes); err != nil {
+		t.Fatal(err)
+	}
+	sessions, err := r.AllSessions(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(sessions) != 1 || sessions[0].ID != "new-sess" {
+		t.Fatalf("sessions = %+v", sessions)
+	}
+	evs, err := r.EventsForSession(ctx, "new-sess")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(evs) != 2 {
+		t.Fatalf("event repoint = %d want 2", len(evs))
+	}
+
+	if err := r.ReplaceAllSessions(ctx, writes); err != nil {
+		t.Fatal(err)
+	}
+	again, _ := r.AllSessions(ctx)
+	if len(again) != 1 {
+		t.Fatalf("after re-replace = %d want 1", len(again))
+	}
+}

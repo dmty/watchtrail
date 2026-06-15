@@ -111,3 +111,59 @@ func (r *SQLiteRepo) AllMediaDurations(ctx context.Context) (map[string]*int, er
 	}
 	return out, rows.Err()
 }
+
+// SessionWrite is one rebuilt session plus the event ids that belong to it.
+type SessionWrite struct {
+	Session  Session
+	EventIDs []string
+}
+
+// ReplaceAllSessions atomically rewrites the derived layer: it clears every
+// watch_session row and event->session link, then inserts the given sessions and
+// repoints their events. All-or-nothing; on any error the transaction rolls back.
+func (r *SQLiteRepo) ReplaceAllSessions(ctx context.Context, writes []SessionWrite) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback() // no-op after a successful Commit
+
+	if _, err := tx.ExecContext(ctx, `DELETE FROM watch_session`); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE watch_event SET session_id = NULL`); err != nil {
+		return err
+	}
+
+	insSession, err := tx.PrepareContext(ctx,
+		`INSERT INTO watch_session
+		   (id, media_item_id, source_kind, source_instance, started_at, ended_at,
+		    watched_seconds, max_position_seconds, completed, event_count, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+	if err != nil {
+		return err
+	}
+	defer insSession.Close()
+	repoint, err := tx.PrepareContext(ctx, `UPDATE watch_event SET session_id = ? WHERE id = ?`)
+	if err != nil {
+		return err
+	}
+	defer repoint.Close()
+
+	for _, wr := range writes {
+		s := wr.Session
+		if _, err := insSession.ExecContext(ctx,
+			s.ID, s.MediaItemID, s.SourceKind, nullStr(s.SourceInstance),
+			s.StartedAt.UTC().Format(time.RFC3339Nano), s.EndedAt.UTC().Format(time.RFC3339Nano),
+			s.WatchedSeconds, s.MaxPositionSeconds, boolToInt(s.Completed), s.EventCount,
+			s.CreatedAt.UTC().Format(time.RFC3339Nano), s.UpdatedAt.UTC().Format(time.RFC3339Nano)); err != nil {
+			return err
+		}
+		for _, eid := range wr.EventIDs {
+			if _, err := repoint.ExecContext(ctx, s.ID, eid); err != nil {
+				return err
+			}
+		}
+	}
+	return tx.Commit()
+}
