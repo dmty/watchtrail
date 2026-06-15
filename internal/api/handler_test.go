@@ -66,7 +66,10 @@ func TestSessionsEndpoint(t *testing.T) {
 
 func TestSessionsBadCursor(t *testing.T) {
 	srv := newAPI(t, nil)
-	resp, _ := http.Get(srv.URL + "/api/v1/sessions?cursor=!!bad")
+	resp, err := http.Get(srv.URL + "/api/v1/sessions?cursor=!!bad")
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 400 {
 		t.Fatalf("status %d want 400", resp.StatusCode)
@@ -79,7 +82,10 @@ func TestMediaDetailEndpoint(t *testing.T) {
 		seedAPISession(t, r, "s1", "mX", "Film", "vlc", base, 100, true)
 		seedAPISession(t, r, "s2", "mX", "Film", "vlc", base.Add(2*time.Hour), 40, false)
 	})
-	resp, _ := http.Get(srv.URL + "/api/v1/media/mX")
+	resp, err := http.Get(srv.URL + "/api/v1/media/mX")
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
 		t.Fatalf("status %d", resp.StatusCode)
@@ -93,7 +99,10 @@ func TestMediaDetailEndpoint(t *testing.T) {
 
 func TestMediaDetailNotFound(t *testing.T) {
 	srv := newAPI(t, nil)
-	resp, _ := http.Get(srv.URL + "/api/v1/media/missing")
+	resp, err := http.Get(srv.URL + "/api/v1/media/missing")
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 404 {
 		t.Fatalf("status %d want 404", resp.StatusCode)
@@ -102,7 +111,10 @@ func TestMediaDetailNotFound(t *testing.T) {
 
 func TestHealthEndpoint(t *testing.T) {
 	srv := newAPI(t, nil)
-	resp, _ := http.Get(srv.URL + "/api/v1/health")
+	resp, err := http.Get(srv.URL + "/api/v1/health")
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	var h healthDTO
 	json.NewDecoder(resp.Body).Decode(&h)
@@ -117,7 +129,10 @@ func TestStatsSummaryEndpoint(t *testing.T) {
 		seedAPISession(t, r, "s1", "m1", "A", "vlc", base, 100, true)
 		seedAPISession(t, r, "s2", "m2", "B", "vlc", base.Add(time.Hour), 50, false)
 	})
-	resp, _ := http.Get(srv.URL + "/api/v1/stats/summary")
+	resp, err := http.Get(srv.URL + "/api/v1/stats/summary")
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	var s summaryDTO
 	json.NewDecoder(resp.Body).Decode(&s)
@@ -128,7 +143,10 @@ func TestStatsSummaryEndpoint(t *testing.T) {
 
 func TestStatsOverTimeBadBucket(t *testing.T) {
 	srv := newAPI(t, nil)
-	resp, _ := http.Get(srv.URL + "/api/v1/stats/over-time?bucket=week")
+	resp, err := http.Get(srv.URL + "/api/v1/stats/over-time?bucket=week")
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 400 {
 		t.Fatalf("status %d want 400", resp.StatusCode)
@@ -140,7 +158,10 @@ func TestStatsOverTimeDefaultsToDay(t *testing.T) {
 	srv := newAPI(t, func(r *store.SQLiteRepo) {
 		seedAPISession(t, r, "s1", "m1", "A", "vlc", base, 100, true)
 	})
-	resp, _ := http.Get(srv.URL + "/api/v1/stats/over-time")
+	resp, err := http.Get(srv.URL + "/api/v1/stats/over-time")
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
 		t.Fatalf("status %d", resp.StatusCode)
@@ -156,12 +177,18 @@ func TestStatsOverTimeDefaultsToDay(t *testing.T) {
 
 func TestSessionsBadTimeParam(t *testing.T) {
 	srv := newAPI(t, nil)
-	resp, _ := http.Get(srv.URL + "/api/v1/sessions?from=nonsense")
+	resp, err := http.Get(srv.URL + "/api/v1/sessions?from=nonsense")
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 400 {
 		t.Fatalf("bad from status %d want 400", resp.StatusCode)
 	}
-	resp2, _ := http.Get(srv.URL + "/api/v1/sessions?limit=-3")
+	resp2, err := http.Get(srv.URL + "/api/v1/sessions?limit=-3")
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp2.Body.Close()
 	if resp2.StatusCode != 400 {
 		t.Fatalf("bad limit status %d want 400", resp2.StatusCode)
@@ -174,7 +201,10 @@ func TestStatsBySourceEndpoint(t *testing.T) {
 		seedAPISession(t, r, "s1", "m1", "A", "vlc", base, 100, true)
 		seedAPISession(t, r, "s2", "m2", "B", "youtube", base.Add(time.Hour), 50, false)
 	})
-	resp, _ := http.Get(srv.URL + "/api/v1/stats/by-source")
+	resp, err := http.Get(srv.URL + "/api/v1/stats/by-source")
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
 		t.Fatalf("status %d", resp.StatusCode)
@@ -190,7 +220,10 @@ func TestStatsBySourceEndpoint(t *testing.T) {
 
 func TestStatsSummaryBadTimeParam(t *testing.T) {
 	srv := newAPI(t, nil)
-	resp, _ := http.Get(srv.URL + "/api/v1/stats/summary?to=garbage")
+	resp, err := http.Get(srv.URL + "/api/v1/stats/summary?to=garbage")
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 400 {
 		t.Fatalf("status %d want 400", resp.StatusCode)

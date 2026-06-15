@@ -52,15 +52,6 @@ type Session struct {
 	UpdatedAt          time.Time
 }
 
-// SessionView is a session joined to its media title, for list displays.
-type SessionView struct {
-	StartedAt      time.Time
-	Title          string
-	SourceKind     string
-	WatchedSeconds int
-	Completed      bool
-}
-
 // Repository is the persistence boundary. Minimal surface for now.
 type Repository interface {
 	// FindOrCreateMediaItem returns the id of the media_item with m.IdentityKey,
@@ -80,8 +71,6 @@ type Repository interface {
 	EventsForSession(ctx context.Context, sessionID string) ([]Event, error)
 	// UpsertSession inserts or updates a session row (created_at preserved on update).
 	UpsertSession(ctx context.Context, s Session) error
-	// RecentSessions returns the most recent sessions joined to media title.
-	RecentSessions(ctx context.Context, limit int) ([]SessionView, error)
 
 	// Read API surface (M2).
 	Sessions(ctx context.Context, f SessionFilter) ([]SessionRow, string, error)
