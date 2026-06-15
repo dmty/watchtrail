@@ -20,5 +20,6 @@ func Handler(repo store.Repository) (http.Handler, error) {
 	mux.HandleFunc("GET /{$}", handleRecent(repo, rn))
 	mux.HandleFunc("GET /item/{id}", handleItem(repo, rn))
 	mux.HandleFunc("GET /stats", handleStats(repo, rn))
+	mux.HandleFunc("GET /search", handleSearch(repo, rn))
 	return mux, nil
 }

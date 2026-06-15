@@ -1,0 +1,17 @@
+{{define "title"}}Search — WatchTrail{{end}}
+{{define "content"}}
+<h1>Search <small>the archive</small></h1>
+<form class="filters">
+  <input type="search" name="q" placeholder="title…" value="{{.Query.Q}}"
+         hx-get="/search" hx-target="#results" hx-swap="outerHTML"
+         hx-trigger="keyup changed delay:300ms"
+         hx-include="[name='source'],[name='kind']">
+  <input type="text" name="source" placeholder="source" value="{{.Query.Source}}"
+         hx-get="/search" hx-target="#results" hx-swap="outerHTML" hx-trigger="change"
+         hx-include="[name='q'],[name='kind']">
+  <input type="text" name="kind" placeholder="kind" value="{{.Query.Kind}}"
+         hx-get="/search" hx-target="#results" hx-swap="outerHTML" hx-trigger="change"
+         hx-include="[name='q'],[name='source']">
+</form>
+{{template "search_results" .}}
+{{end}}

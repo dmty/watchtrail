@@ -1,0 +1,13 @@
+{{define "search_results"}}
+<div id="results">
+  {{if .Prompt}}
+  <p>Type to search.</p>
+  {{else}}
+  {{range .Results}}
+  <div><a href="/item/{{.ID}}">{{.Title}}</a> <small>{{sourceBadge .Source}} · {{.Kind}}</small></div>
+  {{else}}
+  <p>No matches.</p>
+  {{end}}
+  {{end}}
+</div>
+{{end}}
