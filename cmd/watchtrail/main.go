@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"watchtrail/internal/api"
 	"watchtrail/internal/config"
 	"watchtrail/internal/ingest"
 	"watchtrail/internal/sessionize"
@@ -80,9 +81,12 @@ func runServe(cfgPath string) error {
 	}()
 
 	httpErr := make(chan error, 1)
-	httpSrv := &http.Server{Addr: cfg.HTTPAddr, Handler: pipeline.HTTPHandler(cfg.Token)}
+	root := http.NewServeMux()
+	root.Handle("/ingest", pipeline.HTTPHandler(cfg.Token))
+	root.Handle("/api/v1/", api.Handler(repo))
+	httpSrv := &http.Server{Addr: cfg.HTTPAddr, Handler: root}
 	go func() {
-		log.Printf("HTTP ingest on http://%s/ingest", cfg.HTTPAddr)
+		log.Printf("HTTP ingest on http://%s/ingest, read API on http://%s/api/v1", cfg.HTTPAddr, cfg.HTTPAddr)
 		if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			httpErr <- err
 		}
