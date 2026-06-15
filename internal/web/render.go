@@ -39,6 +39,10 @@ type recentFilter struct {
 	To     string
 }
 
+type recentPageData struct {
+	recentFragmentData
+}
+
 // watchedFmt renders seconds as m:ss, or h:mm:ss past an hour (mirrors the CLI).
 func watchedFmt(secs int) string {
 	h := secs / 3600
