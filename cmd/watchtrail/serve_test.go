@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -83,4 +84,37 @@ func TestRootMuxServesDashboard(t *testing.T) {
 	if resp2.StatusCode != 200 {
 		t.Fatalf("api health status %d", resp2.StatusCode)
 	}
+}
+
+func TestRootMuxServesEvents(t *testing.T) {
+	repo, err := store.Open(t.TempDir() + "/t.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer repo.Close()
+	broker := events.New()
+	webHandler, err := web.Handler(repo, broker)
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := http.NewServeMux()
+	root.Handle("/", webHandler)
+	srv := httptest.NewServer(root)
+	defer srv.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	req, _ := http.NewRequestWithContext(ctx, "GET", srv.URL+"/events", nil)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		t.Fatalf("/events status %d", resp.StatusCode)
+	}
+	if ct := resp.Header.Get("Content-Type"); ct != "text/event-stream" {
+		t.Fatalf("/events content-type %q", ct)
+	}
+	cancel()
 }

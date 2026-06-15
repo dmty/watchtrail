@@ -77,7 +77,9 @@ func runServe(cfgPath string) error {
 		CompletionThreshold: cfg.CompletionThreshold,
 		ProgressCadence:     time.Duration(cfg.ProgressCadenceSeconds) * time.Second,
 	}
-	pipeline := ingest.NewPipeline(repo, sessCfg, time.Now, nil)
+	// One broker shared by the ingest publisher and the dashboard SSE stream.
+	broker := events.New()
+	pipeline := ingest.NewPipeline(repo, sessCfg, time.Now, broker)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -95,7 +97,7 @@ func runServe(cfgPath string) error {
 	}()
 
 	httpErr := make(chan error, 1)
-	webHandler, err := web.Handler(repo, events.New())
+	webHandler, err := web.Handler(repo, broker)
 	if err != nil {
 		return fmt.Errorf("web: %w", err)
 	}
