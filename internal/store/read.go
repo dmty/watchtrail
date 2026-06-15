@@ -16,21 +16,25 @@ func encodeCursor(startedAt time.Time, id string) string {
 	return base64.RawURLEncoding.EncodeToString([]byte(raw))
 }
 
+// ErrBadCursor marks a malformed paging cursor — caller error (400), not a server
+// fault. Callers distinguish it via errors.Is to map the right HTTP status.
+var ErrBadCursor = errors.New("invalid cursor")
+
 func decodeCursor(cur string) (time.Time, string, error) {
 	if cur == "" {
-		return time.Time{}, "", errors.New("empty cursor")
+		return time.Time{}, "", ErrBadCursor
 	}
 	b, err := base64.RawURLEncoding.DecodeString(cur)
 	if err != nil {
-		return time.Time{}, "", errors.New("malformed cursor")
+		return time.Time{}, "", ErrBadCursor
 	}
 	parts := strings.SplitN(string(b), "|", 2)
 	if len(parts) != 2 {
-		return time.Time{}, "", errors.New("malformed cursor")
+		return time.Time{}, "", ErrBadCursor
 	}
 	at, err := time.Parse(time.RFC3339Nano, parts[0])
 	if err != nil {
-		return time.Time{}, "", errors.New("malformed cursor")
+		return time.Time{}, "", ErrBadCursor
 	}
 	return at, parts[1], nil
 }

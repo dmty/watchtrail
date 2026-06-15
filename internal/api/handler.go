@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 
@@ -41,12 +42,7 @@ func serverErr(w http.ResponseWriter, err error) {
 func handleSessions(repo store.Repository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
-		from, err := optTime(q, "from")
-		if err != nil {
-			writeErr(w, http.StatusBadRequest, err.Error())
-			return
-		}
-		to, err := optTime(q, "to")
+		from, to, err := timeRange(q)
 		if err != nil {
 			writeErr(w, http.StatusBadRequest, err.Error())
 			return
@@ -61,7 +57,7 @@ func handleSessions(repo store.Repository) http.HandlerFunc {
 			MediaID: q.Get("media"), Limit: limit, Cursor: q.Get("cursor"),
 		})
 		if err != nil {
-			if q.Get("cursor") != "" {
+			if errors.Is(err, store.ErrBadCursor) {
 				writeErr(w, http.StatusBadRequest, "invalid cursor")
 				return
 			}
@@ -155,12 +151,7 @@ func handleHealth(repo store.Repository) http.HandlerFunc {
 func handleStatsSummary(repo store.Repository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
-		from, err := optTime(q, "from")
-		if err != nil {
-			writeErr(w, http.StatusBadRequest, err.Error())
-			return
-		}
-		to, err := optTime(q, "to")
+		from, to, err := timeRange(q)
 		if err != nil {
 			writeErr(w, http.StatusBadRequest, err.Error())
 			return
@@ -180,12 +171,7 @@ func handleStatsSummary(repo store.Repository) http.HandlerFunc {
 func handleStatsBySource(repo store.Repository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
-		from, err := optTime(q, "from")
-		if err != nil {
-			writeErr(w, http.StatusBadRequest, err.Error())
-			return
-		}
-		to, err := optTime(q, "to")
+		from, to, err := timeRange(q)
 		if err != nil {
 			writeErr(w, http.StatusBadRequest, err.Error())
 			return
@@ -213,12 +199,7 @@ func handleStatsOverTime(repo store.Repository) http.HandlerFunc {
 		if bucket == "" {
 			bucket = "day"
 		}
-		from, err := optTime(q, "from")
-		if err != nil {
-			writeErr(w, http.StatusBadRequest, err.Error())
-			return
-		}
-		to, err := optTime(q, "to")
+		from, to, err := timeRange(q)
 		if err != nil {
 			writeErr(w, http.StatusBadRequest, err.Error())
 			return

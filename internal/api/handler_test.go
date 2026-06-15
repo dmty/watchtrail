@@ -153,3 +153,46 @@ func TestStatsOverTimeDefaultsToDay(t *testing.T) {
 		t.Fatalf("buckets = %+v", body.Buckets)
 	}
 }
+
+func TestSessionsBadTimeParam(t *testing.T) {
+	srv := newAPI(t, nil)
+	resp, _ := http.Get(srv.URL + "/api/v1/sessions?from=nonsense")
+	defer resp.Body.Close()
+	if resp.StatusCode != 400 {
+		t.Fatalf("bad from status %d want 400", resp.StatusCode)
+	}
+	resp2, _ := http.Get(srv.URL + "/api/v1/sessions?limit=-3")
+	defer resp2.Body.Close()
+	if resp2.StatusCode != 400 {
+		t.Fatalf("bad limit status %d want 400", resp2.StatusCode)
+	}
+}
+
+func TestStatsBySourceEndpoint(t *testing.T) {
+	base := time.Date(2026, 6, 15, 12, 0, 0, 0, time.UTC)
+	srv := newAPI(t, func(r *store.SQLiteRepo) {
+		seedAPISession(t, r, "s1", "m1", "A", "vlc", base, 100, true)
+		seedAPISession(t, r, "s2", "m2", "B", "youtube", base.Add(time.Hour), 50, false)
+	})
+	resp, _ := http.Get(srv.URL + "/api/v1/stats/by-source")
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		t.Fatalf("status %d", resp.StatusCode)
+	}
+	var body struct {
+		BySource []sourceStatDTO `json:"by_source"`
+	}
+	json.NewDecoder(resp.Body).Decode(&body)
+	if len(body.BySource) != 2 {
+		t.Fatalf("by_source = %+v", body.BySource)
+	}
+}
+
+func TestStatsSummaryBadTimeParam(t *testing.T) {
+	srv := newAPI(t, nil)
+	resp, _ := http.Get(srv.URL + "/api/v1/stats/summary?to=garbage")
+	defer resp.Body.Close()
+	if resp.StatusCode != 400 {
+		t.Fatalf("status %d want 400", resp.StatusCode)
+	}
+}

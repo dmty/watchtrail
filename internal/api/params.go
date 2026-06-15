@@ -31,6 +31,18 @@ func optTime(q url.Values, key string) (*time.Time, error) {
 	return &t, nil
 }
 
+// timeRange parses the optional from/to window shared by sessions and stats
+// handlers. Either bound absent => nil; a malformed bound returns an error.
+func timeRange(q url.Values) (from, to *time.Time, err error) {
+	if from, err = optTime(q, "from"); err != nil {
+		return nil, nil, err
+	}
+	if to, err = optTime(q, "to"); err != nil {
+		return nil, nil, err
+	}
+	return from, to, nil
+}
+
 // parseLimit parses an optional positive limit; "" => 0 (handler default).
 func parseLimit(s string) (int, error) {
 	if s == "" {
