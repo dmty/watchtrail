@@ -172,3 +172,99 @@ func (r *SQLiteRepo) Sessions(ctx context.Context, f SessionFilter) ([]SessionRo
 	}
 	return out, next, nil
 }
+
+// MediaItemSummary is a lightweight media row for search/browse results.
+type MediaItemSummary struct {
+	ID              string
+	Title           string
+	SourceKind      string
+	Kind            string
+	DurationSeconds *int
+}
+
+// MediaByID returns the full media item, or ok=false if absent (excludes soft-deleted).
+func (r *SQLiteRepo) MediaByID(ctx context.Context, id string) (MediaItem, bool, error) {
+	var m MediaItem
+	var title, urlOrPath, metadata sql.NullString
+	var dur sql.NullInt64
+	var created, updated string
+	err := r.db.QueryRowContext(ctx,
+		`SELECT id, source_kind, external_id, identity_key, kind, title, url_or_path,
+		        duration_seconds, metadata, created_at, updated_at
+		   FROM media_item
+		  WHERE id = ? AND deleted_at IS NULL`, id).Scan(
+		&m.ID, &m.SourceKind, &m.ExternalID, &m.IdentityKey, &m.Kind, &title, &urlOrPath,
+		&dur, &metadata, &created, &updated)
+	if err == sql.ErrNoRows {
+		return MediaItem{}, false, nil
+	}
+	if err != nil {
+		return MediaItem{}, false, err
+	}
+	m.Title = title.String
+	m.URLOrPath = urlOrPath.String
+	if dur.Valid {
+		v := int(dur.Int64)
+		m.DurationSeconds = &v
+	}
+	if metadata.Valid {
+		m.Metadata = []byte(metadata.String)
+	}
+	if m.CreatedAt, err = parseTime(created); err != nil {
+		return MediaItem{}, false, err
+	}
+	if m.UpdatedAt, err = parseTime(updated); err != nil {
+		return MediaItem{}, false, err
+	}
+	return m, true, nil
+}
+
+// SessionsForMedia returns every session for one media item, newest-first.
+func (r *SQLiteRepo) SessionsForMedia(ctx context.Context, mediaID string) ([]SessionRow, error) {
+	rows, _, err := r.Sessions(ctx, SessionFilter{MediaID: mediaID, Limit: maxSessionLimit})
+	return rows, err
+}
+
+// MediaSearch finds media by case-insensitive title substring, optionally
+// constrained by source_kind and kind. Empty q matches all (subject to filters).
+func (r *SQLiteRepo) MediaSearch(ctx context.Context, q, source, kind string) ([]MediaItemSummary, error) {
+	conds := []string{"deleted_at IS NULL"}
+	var args []any
+	if q != "" {
+		conds = append(conds, "LOWER(COALESCE(title, external_id)) LIKE ?")
+		args = append(args, "%"+strings.ToLower(q)+"%")
+	}
+	if source != "" {
+		conds = append(conds, "source_kind = ?")
+		args = append(args, source)
+	}
+	if kind != "" {
+		conds = append(conds, "kind = ?")
+		args = append(args, kind)
+	}
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT id, COALESCE(title, external_id), source_kind, kind, duration_seconds
+		   FROM media_item
+		  WHERE `+strings.Join(conds, " AND ")+`
+		  ORDER BY COALESCE(title, external_id)
+		  LIMIT ?`, append(args, maxSessionLimit)...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []MediaItemSummary
+	for rows.Next() {
+		var s MediaItemSummary
+		var dur sql.NullInt64
+		if err := rows.Scan(&s.ID, &s.Title, &s.SourceKind, &s.Kind, &dur); err != nil {
+			return nil, err
+		}
+		if dur.Valid {
+			v := int(dur.Int64)
+			s.DurationSeconds = &v
+		}
+		out = append(out, s)
+	}
+	return out, rows.Err()
+}

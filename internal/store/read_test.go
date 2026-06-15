@@ -100,3 +100,53 @@ func sessionIDs(rows []SessionRow) []string {
 	}
 	return out
 }
+
+func TestMediaByIDAndSessions(t *testing.T) {
+	r := openTemp(t)
+	ctx := context.Background()
+	base := time.Date(2026, 6, 15, 9, 0, 0, 0, time.UTC)
+	seedSession(t, r, "sa", "mX", "The Film", "vlc", base, 100, true)
+	seedSession(t, r, "sb", "mX", "The Film", "vlc", base.Add(2*time.Hour), 50, false)
+
+	m, ok, err := r.MediaByID(ctx, "mX")
+	if err != nil || !ok {
+		t.Fatalf("MediaByID ok=%v err=%v", ok, err)
+	}
+	if m.Title != "The Film" {
+		t.Fatalf("title=%q", m.Title)
+	}
+	if _, ok, _ := r.MediaByID(ctx, "missing"); ok {
+		t.Fatal("expected not found")
+	}
+
+	sessions, err := r.SessionsForMedia(ctx, "mX")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(sessions) != 2 || sessions[0].ID != "sb" {
+		t.Fatalf("sessions = %v", sessionIDs(sessions))
+	}
+}
+
+func TestMediaSearch(t *testing.T) {
+	r := openTemp(t)
+	ctx := context.Background()
+	base := time.Date(2026, 6, 15, 9, 0, 0, 0, time.UTC)
+	seedSession(t, r, "s1", "m1", "Cosmos Episode 1", "vlc", base, 60, false)
+	seedSession(t, r, "s2", "m2", "Breaking News", "youtube", base, 60, false)
+
+	got, err := r.MediaSearch(ctx, "cosmos", "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || got[0].ID != "m1" {
+		t.Fatalf("search = %+v", got)
+	}
+	bySource, err := r.MediaSearch(ctx, "", "youtube", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(bySource) != 1 || bySource[0].ID != "m2" {
+		t.Fatalf("source search = %+v", bySource)
+	}
+}
