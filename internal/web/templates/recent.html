@@ -7,4 +7,18 @@
   <input type="date" name="to" value="{{.Filter.To}}">
 </form>
 {{template "sessions_rows" .}}
+<script>
+(function () {
+  if (!window.EventSource) return;
+  var t, es = new EventSource('/events');
+  es.addEventListener('update', function () {
+    clearTimeout(t);
+    t = setTimeout(function () {
+      var f = document.getElementById('filters');
+      var qs = f ? new URLSearchParams(new FormData(f)).toString() : '';
+      window.htmx && htmx.ajax('GET', '/?' + qs, { target: '#sessions', swap: 'outerHTML' });
+    }, 300);
+  });
+})();
+</script>
 {{end}}

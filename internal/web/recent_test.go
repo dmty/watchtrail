@@ -79,3 +79,19 @@ func TestRecentEmptyState(t *testing.T) {
 		t.Fatalf("empty state missing: %q", body)
 	}
 }
+
+func TestRecentFullPageHasLiveScript(t *testing.T) {
+	srv := newWebServer(t, nil)
+	_, body := bodyOf(t, srv.URL+"/", false)
+	if !strings.Contains(body, "new EventSource('/events')") {
+		t.Fatalf("full page should include the live-update script: %q", body)
+	}
+}
+
+func TestRecentFragmentHasNoLiveScript(t *testing.T) {
+	srv := newWebServer(t, nil)
+	_, body := bodyOf(t, srv.URL+"/", true)
+	if strings.Contains(body, "EventSource") {
+		t.Fatalf("htmx fragment must not re-include the EventSource script: %q", body)
+	}
+}
