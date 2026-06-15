@@ -22,9 +22,6 @@ func Handler(repo store.Repository) (http.Handler, error) {
 	return mux, nil
 }
 
-func handleRecent(repo store.Repository, rn *renderer) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) { _ = rn.page(w, "recent", recentPageData{}) }
-}
 func handleItem(repo store.Repository, rn *renderer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) { http.Error(w, "todo", http.StatusNotImplemented) }
 }

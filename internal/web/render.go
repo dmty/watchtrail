@@ -16,33 +16,6 @@ var templatesFS embed.FS
 //go:embed static/*
 var staticFS embed.FS
 
-// recentFragmentData is the data shape the sessions_rows fragment renders.
-// (Defined here in the scaffold; the Recent handler in recent.go populates it.)
-type recentFragmentData struct {
-	Rows       []sessionRow
-	NextCursor string
-	Filter     recentFilter
-}
-
-type sessionRow struct {
-	ID             string
-	Title          string
-	SourceKind     string
-	StartedAt      time.Time
-	WatchedSeconds int
-	Completed      bool
-}
-
-type recentFilter struct {
-	Source string
-	From   string
-	To     string
-}
-
-type recentPageData struct {
-	recentFragmentData
-}
-
 // watchedFmt renders seconds as m:ss, or h:mm:ss past an hour (mirrors the CLI).
 func watchedFmt(secs int) string {
 	h := secs / 3600
@@ -95,7 +68,8 @@ var fragmentFiles = []string{"templates/_sessions_rows.html"}
 func newRenderer() (*renderer, error) {
 	pages := make(map[string]*template.Template, len(pageFiles))
 	for name, file := range pageFiles {
-		t, err := template.New("base").Funcs(funcs).ParseFS(templatesFS, "templates/base.html", file)
+		files := append([]string{"templates/base.html", file}, fragmentFiles...)
+		t, err := template.New("base").Funcs(funcs).ParseFS(templatesFS, files...)
 		if err != nil {
 			return nil, fmt.Errorf("parse page %s: %w", name, err)
 		}
