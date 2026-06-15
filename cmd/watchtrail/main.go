@@ -36,13 +36,17 @@ func main() {
 		if err := runRecent(os.Args[2:]); err != nil {
 			log.Fatalf("watchtrail: %v", err)
 		}
+	case "rebuild-sessions":
+		if err := runRebuild(os.Args[2:]); err != nil {
+			log.Fatalf("watchtrail: %v", err)
+		}
 	default:
 		usage()
 	}
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: watchtrail <serve|recent> [flags]")
+	fmt.Fprintln(os.Stderr, "usage: watchtrail <serve|recent|item|stats|rebuild-sessions> [flags]")
 	os.Exit(2)
 }
 
