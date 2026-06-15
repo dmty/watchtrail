@@ -3,9 +3,11 @@
 package rebuild
 
 import (
+	"context"
 	"sort"
 	"time"
 
+	"watchtrail/internal/ids"
 	"watchtrail/internal/sessionize"
 	"watchtrail/internal/store"
 )
@@ -152,6 +154,26 @@ func Diff(stored []store.Session, rebuilt []RebuiltSession) Report {
 		}
 	}
 	return rep
+}
+
+// ApplyRepo is the store surface Apply needs.
+type ApplyRepo interface {
+	ReplaceAllSessions(ctx context.Context, writes []store.SessionWrite) error
+}
+
+// Apply persists a rebuild: it mints a fresh UUID and now() timestamps for each
+// rebuilt session and replaces the derived layer in one transaction.
+func Apply(ctx context.Context, repo ApplyRepo, rebuilt []RebuiltSession, now func() time.Time) error {
+	ts := now().UTC()
+	writes := make([]store.SessionWrite, 0, len(rebuilt))
+	for _, rb := range rebuilt {
+		s := rb.Session
+		s.ID = ids.NewUUID()
+		s.CreatedAt = ts
+		s.UpdatedAt = ts
+		writes = append(writes, store.SessionWrite{Session: s, EventIDs: rb.EventIDs})
+	}
+	return repo.ReplaceAllSessions(ctx, writes)
 }
 
 func changedFields(s, b store.Session) []string {
