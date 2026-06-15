@@ -40,11 +40,10 @@ func decodeCursor(cur string) (time.Time, string, error) {
 func (r *SQLiteRepo) FindOrCreateMediaItemWithID(ctx context.Context, id, title, source string) (string, error) {
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err := r.db.ExecContext(ctx,
-		`INSERT INTO media_item
+		`INSERT OR IGNORE INTO media_item
 		   (id, source_kind, external_id, identity_key, kind, title, url_or_path,
 		    duration_seconds, metadata, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, 'unknown', ?, NULL, NULL, NULL, ?, ?)
-		 ON CONFLICT(identity_key) DO NOTHING`,
+		 VALUES (?, ?, ?, ?, 'unknown', ?, NULL, NULL, NULL, ?, ?)`,
 		id, source, id, source+":"+id, nullStr(title), now, now)
 	return id, err
 }
