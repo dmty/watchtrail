@@ -41,7 +41,7 @@ func (s *Sessionizer) Assign(ctx context.Context, ev store.Event) (string, error
 
 	var sessionID string
 	var createdAt time.Time
-	if found && ev.OccurredAt.Sub(latest.EndedAt) <= s.cfg.SessionGap {
+	if found && !OpensNewSession(latest.EndedAt, ev.OccurredAt, s.cfg.SessionGap) {
 		sessionID = latest.ID
 		createdAt = latest.CreatedAt
 	} else {
