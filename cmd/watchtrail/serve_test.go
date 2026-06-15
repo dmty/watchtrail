@@ -10,6 +10,7 @@ import (
 	"watchtrail/internal/ingest"
 	"watchtrail/internal/sessionize"
 	"watchtrail/internal/store"
+	"watchtrail/internal/web"
 )
 
 // TestRootMuxRoutes proves ingest and the read API coexist on one mux.
@@ -44,5 +45,41 @@ func TestRootMuxRoutes(t *testing.T) {
 	resp2.Body.Close()
 	if resp2.StatusCode != http.StatusMethodNotAllowed {
 		t.Fatalf("ingest GET status %d want 405", resp2.StatusCode)
+	}
+}
+
+func TestRootMuxServesDashboard(t *testing.T) {
+	repo, err := store.Open(t.TempDir() + "/t.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer repo.Close()
+
+	webHandler, err := web.Handler(repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := http.NewServeMux()
+	root.Handle("/api/v1/", api.Handler(repo))
+	root.Handle("/", webHandler)
+
+	srv := httptest.NewServer(root)
+	defer srv.Close()
+
+	resp, err := http.Get(srv.URL + "/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != 200 {
+		t.Fatalf("dashboard / status %d", resp.StatusCode)
+	}
+	resp2, err := http.Get(srv.URL + "/api/v1/health")
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp2.Body.Close()
+	if resp2.StatusCode != 200 {
+		t.Fatalf("api health status %d", resp2.StatusCode)
 	}
 }

@@ -18,6 +18,7 @@ import (
 	"watchtrail/internal/ingest"
 	"watchtrail/internal/sessionize"
 	"watchtrail/internal/store"
+	"watchtrail/internal/web"
 )
 
 func main() {
@@ -93,12 +94,17 @@ func runServe(cfgPath string) error {
 	}()
 
 	httpErr := make(chan error, 1)
+	webHandler, err := web.Handler(repo)
+	if err != nil {
+		return fmt.Errorf("web: %w", err)
+	}
 	root := http.NewServeMux()
 	root.Handle("/ingest", pipeline.HTTPHandler(cfg.Token))
 	root.Handle("/api/v1/", api.Handler(repo))
+	root.Handle("/", webHandler)
 	httpSrv := &http.Server{Addr: cfg.HTTPAddr, Handler: root}
 	go func() {
-		log.Printf("HTTP ingest on http://%s/ingest, read API on http://%s/api/v1", cfg.HTTPAddr, cfg.HTTPAddr)
+		log.Printf("ingest http://%s/ingest · API http://%s/api/v1 · dashboard http://%s/", cfg.HTTPAddr, cfg.HTTPAddr, cfg.HTTPAddr)
 		if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			httpErr <- err
 		}
