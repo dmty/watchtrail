@@ -36,6 +36,14 @@ func main() {
 		if err := runRecent(os.Args[2:]); err != nil {
 			log.Fatalf("watchtrail: %v", err)
 		}
+	case "item":
+		if err := runItem(os.Args[2:]); err != nil {
+			log.Fatalf("watchtrail: %v", err)
+		}
+	case "stats":
+		if err := runStats(os.Args[2:]); err != nil {
+			log.Fatalf("watchtrail: %v", err)
+		}
 	case "rebuild-sessions":
 		if err := runRebuild(os.Args[2:]); err != nil {
 			log.Fatalf("watchtrail: %v", err)

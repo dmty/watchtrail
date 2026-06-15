@@ -8,39 +8,39 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"watchtrail/internal/config"
 	"watchtrail/internal/store"
 )
 
-// runRecent handles `watchtrail recent [-config path] [-n N]`.
+// runRecent handles `watchtrail recent [-config path] [-n N] [-source S]`.
 func runRecent(args []string) error {
 	fs := flag.NewFlagSet("recent", flag.ExitOnError)
 	cfgPath := fs.String("config", "watchtrail.toml", "path to config file")
 	limit := fs.Int("n", 20, "number of sessions to show")
+	source := fs.String("source", "", "filter by source kind")
+	verbose := fs.Bool("verbose", false, "report which data source was used")
 	_ = fs.Parse(args)
 
-	cfg, err := config.Load(*cfgPath)
-	if err != nil {
-		return fmt.Errorf("config: %w", err)
-	}
-	repo, err := store.Open(cfg.DBPath)
-	if err != nil {
-		return fmt.Errorf("store: %w", err)
-	}
-	defer repo.Close()
-
-	return renderRecent(context.Background(), os.Stdout, repo, *limit)
-}
-
-// renderRecent writes a table of recent sessions to w.
-func renderRecent(ctx context.Context, w io.Writer, repo store.Repository, limit int) error {
-	views, err := repo.RecentSessions(ctx, limit)
+	rd, usedStore, closer, err := newReader(*cfgPath)
 	if err != nil {
 		return err
 	}
+	defer closer()
+	if *verbose && usedStore {
+		fmt.Fprintln(os.Stderr, "note: read API unavailable, reading store directly")
+	}
+
+	rows, err := rd.Sessions(context.Background(), sessionsQuery{Limit: *limit, Source: *source})
+	if err != nil {
+		return err
+	}
+	return renderRecent(os.Stdout, rows)
+}
+
+// renderRecent writes a table of recent sessions to w.
+func renderRecent(w io.Writer, rows []store.SessionRow) error {
 	tw := tabwriter.NewWriter(w, 0, 2, 2, ' ', 0)
 	fmt.Fprintln(tw, "WHEN\tTITLE\tSOURCE\tWATCHED\tDONE")
-	for _, v := range views {
+	for _, v := range rows {
 		done := ""
 		if v.Completed {
 			done = "✓"
