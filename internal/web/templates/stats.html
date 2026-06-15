@@ -1,0 +1,47 @@
+{{define "title"}}Stats — WatchTrail{{end}}
+{{define "content"}}
+<h1>Stats <small>all time</small></h1>
+<div class="cards">
+  <div class="card"><span>{{watchedFmt .WatchedSeconds}}</span><label>watched</label></div>
+  <div class="card"><span>{{.DistinctItems}}</span><label>items</label></div>
+  <div class="card"><span>{{.Sessions}}</span><label>sessions</label></div>
+  <div class="card"><span>{{printf "%.0f%%" .CompletionPct}}</span><label>completed</label></div>
+</div>
+<h2 class="chart-h">watch time · by day</h2>
+<canvas id="overTime" height="120"></canvas>
+<h2 class="chart-h">by source</h2>
+<canvas id="bySource" height="120"></canvas>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script>
+// Theme Chart.js to the screening-log palette (amber on warm-dark).
+const AMBER = '#e6a23c', INK = '#8c8270', LINE = 'rgba(236,227,212,.09)';
+const SRC = ['#e6a23c','#c2703a','#9d8f6e','#6f5a3c','#d4b483'];
+Chart.defaults.color = INK;
+Chart.defaults.font.family = "'Plex', ui-monospace, monospace";
+Chart.defaults.font.size = 11;
+Chart.defaults.borderColor = LINE;
+async function draw() {
+  const ot = await (await fetch('/api/v1/stats/over-time?bucket=day')).json();
+  new Chart(document.getElementById('overTime'), {
+    type: 'line',
+    data: { labels: (ot.buckets||[]).map(b => b.date),
+            datasets: [{ label: 'watched (s)', data: (ot.buckets||[]).map(b => b.watched_seconds),
+              borderColor: AMBER, backgroundColor: 'rgba(230,162,60,.12)', fill: true,
+              tension: .3, pointRadius: 2, pointBackgroundColor: AMBER }] },
+    options: { plugins: { legend: { display: false } },
+               scales: { x: { grid: { color: LINE } }, y: { grid: { color: LINE }, beginAtZero: true } } }
+  });
+  const bs = await (await fetch('/api/v1/stats/by-source')).json();
+  new Chart(document.getElementById('bySource'), {
+    type: 'doughnut',
+    data: { labels: (bs.by_source||[]).map(s => s.source),
+            datasets: [{ data: (bs.by_source||[]).map(s => s.watched_seconds),
+              backgroundColor: SRC, borderColor: '#15110d', borderWidth: 2 }] },
+    options: { cutout: '62%', plugins: { legend: { position: 'right' } } }
+  });
+}
+draw().catch(() => {
+  document.getElementById('overTime').outerHTML = '<p class="empty">couldn\'t load chart</p>';
+});
+</script>
+{{end}}

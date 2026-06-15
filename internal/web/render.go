@@ -60,6 +60,7 @@ var pageFiles = map[string]string{
 	"recent":    "templates/recent.html",
 	"item":      "templates/item.html",
 	"not_found": "templates/not_found.html",
+	"stats":     "templates/stats.html",
 }
 
 // fragmentFiles are partials rendered standalone for htmx swaps.
