@@ -94,5 +94,10 @@ type Repository interface {
 	CountSessions(ctx context.Context) (int, error)
 	CountMedia(ctx context.Context) (int, error)
 
+	// Replay surface (M2 rebuild-sessions).
+	AllEvents(ctx context.Context) ([]Event, error)
+	AllSessions(ctx context.Context) ([]Session, error)
+	AllMediaDurations(ctx context.Context) (map[string]*int, error)
+
 	Close() error
 }
