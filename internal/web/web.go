@@ -21,7 +21,3 @@ func Handler(repo store.Repository) (http.Handler, error) {
 	mux.HandleFunc("GET /item/{id}", handleItem(repo, rn))
 	return mux, nil
 }
-
-func handleItem(repo store.Repository, rn *renderer) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) { http.Error(w, "todo", http.StatusNotImplemented) }
-}
