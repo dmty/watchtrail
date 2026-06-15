@@ -82,5 +82,17 @@ type Repository interface {
 	UpsertSession(ctx context.Context, s Session) error
 	// RecentSessions returns the most recent sessions joined to media title.
 	RecentSessions(ctx context.Context, limit int) ([]SessionView, error)
+
+	// Read API surface (M2).
+	Sessions(ctx context.Context, f SessionFilter) ([]SessionRow, string, error)
+	MediaByID(ctx context.Context, id string) (MediaItem, bool, error)
+	SessionsForMedia(ctx context.Context, mediaID string) ([]SessionRow, error)
+	MediaSearch(ctx context.Context, q, source, kind string) ([]MediaItemSummary, error)
+	StatsSummary(ctx context.Context, from, to *time.Time) (Summary, error)
+	StatsBySource(ctx context.Context, from, to *time.Time) ([]SourceStat, error)
+	StatsOverTime(ctx context.Context, bucket string, from, to *time.Time) ([]Bucket, error)
+	CountSessions(ctx context.Context) (int, error)
+	CountMedia(ctx context.Context) (int, error)
+
 	Close() error
 }
