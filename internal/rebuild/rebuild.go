@@ -4,6 +4,7 @@ package rebuild
 
 import (
 	"sort"
+	"time"
 
 	"watchtrail/internal/sessionize"
 	"watchtrail/internal/store"
@@ -96,4 +97,79 @@ func foldGroup(events []store.Event, durations map[string]*int, cfg sessionize.C
 		},
 		EventIDs: ids,
 	}
+}
+
+// Change is one session whose aggregates differ between stored and rebuilt.
+type Change struct {
+	Key     string
+	Fields  []string
+	Stored  store.Session
+	Rebuilt store.Session
+}
+
+// Report is the outcome of diffing stored sessions against a rebuild.
+type Report struct {
+	Added   []RebuiltSession // present in rebuild, absent from stored
+	Removed []store.Session  // present in stored, absent from rebuild
+	Changed []Change
+}
+
+// Drift reports whether the stored sessions disagree with the rebuild.
+func (r Report) Drift() bool {
+	return len(r.Added)+len(r.Removed)+len(r.Changed) > 0
+}
+
+func naturalKey(mediaID, instance string, started time.Time) string {
+	return mediaID + "\x00" + instance + "\x00" + started.UTC().Format(time.RFC3339Nano)
+}
+
+// Diff matches stored and rebuilt sessions on the natural key
+// (media_item_id, source_instance, started_at) — never on id, since live sessions
+// carry UUIDs the rebuild cannot reproduce.
+func Diff(stored []store.Session, rebuilt []RebuiltSession) Report {
+	storedByKey := make(map[string]store.Session, len(stored))
+	for _, s := range stored {
+		storedByKey[naturalKey(s.MediaItemID, s.SourceInstance, s.StartedAt)] = s
+	}
+	var rep Report
+	seen := map[string]bool{}
+	for _, rb := range rebuilt {
+		b := rb.Session
+		key := naturalKey(b.MediaItemID, b.SourceInstance, b.StartedAt)
+		seen[key] = true
+		s, ok := storedByKey[key]
+		if !ok {
+			rep.Added = append(rep.Added, rb)
+			continue
+		}
+		if fields := changedFields(s, b); len(fields) > 0 {
+			rep.Changed = append(rep.Changed, Change{Key: key, Fields: fields, Stored: s, Rebuilt: b})
+		}
+	}
+	for _, s := range stored {
+		if !seen[naturalKey(s.MediaItemID, s.SourceInstance, s.StartedAt)] {
+			rep.Removed = append(rep.Removed, s)
+		}
+	}
+	return rep
+}
+
+func changedFields(s, b store.Session) []string {
+	var f []string
+	if s.WatchedSeconds != b.WatchedSeconds {
+		f = append(f, "watched_seconds")
+	}
+	if s.MaxPositionSeconds != b.MaxPositionSeconds {
+		f = append(f, "max_position_seconds")
+	}
+	if s.Completed != b.Completed {
+		f = append(f, "completed")
+	}
+	if !s.EndedAt.Equal(b.EndedAt) {
+		f = append(f, "ended_at")
+	}
+	if s.EventCount != b.EventCount {
+		f = append(f, "event_count")
+	}
+	return f
 }
