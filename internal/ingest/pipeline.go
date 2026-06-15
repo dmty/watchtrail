@@ -15,20 +15,37 @@ import (
 // collector input but always keeps the original in raw.
 const maxPositionSeconds = 30 * 24 * 3600
 
+// Notifier receives a contentless ping after each event is sessionized, so the
+// dashboard can push a live update. The pipeline depends only on this interface,
+// never on the concrete broker — keeping ingest decoupled from the web layer.
+type Notifier interface {
+	Publish()
+}
+
+type nopNotifier struct{}
+
+func (nopNotifier) Publish() {}
+
 // Pipeline is the single path every transport feeds. It owns no transport detail.
 type Pipeline struct {
-	repo store.Repository
-	sess *sessionize.Sessionizer
-	now  func() time.Time
+	repo   store.Repository
+	sess   *sessionize.Sessionizer
+	now    func() time.Time
+	notify Notifier
 }
 
 // NewPipeline builds a Pipeline. now is injected for deterministic timestamps;
-// cfg tunes sessionization.
-func NewPipeline(repo store.Repository, cfg sessionize.Config, now func() time.Time) *Pipeline {
+// cfg tunes sessionization; notify receives a ping after each sessionized event
+// (pass nil to disable, e.g. for the CLI).
+func NewPipeline(repo store.Repository, cfg sessionize.Config, now func() time.Time, notify Notifier) *Pipeline {
+	if notify == nil {
+		notify = nopNotifier{}
+	}
 	return &Pipeline{
-		repo: repo,
-		sess: sessionize.New(repo, cfg, now),
-		now:  now,
+		repo:   repo,
+		sess:   sessionize.New(repo, cfg, now),
+		now:    now,
+		notify: notify,
 	}
 }
 
@@ -61,8 +78,12 @@ func (p *Pipeline) Process(ctx context.Context, raw []byte) error {
 	}
 	// The event is already persisted (idempotent by event_id), so if sessionization
 	// fails the collector can safely retry: the re-sent event dedups and re-folds.
-	_, err = p.sess.Assign(ctx, stored)
-	return err
+	if _, err := p.sess.Assign(ctx, stored); err != nil {
+		return err
+	}
+	// Session committed — ping any live dashboard. Non-blocking; cannot fail ingest.
+	p.notify.Publish()
+	return nil
 }
 
 // toMediaItem maps a canonical event onto media-item identity. The external_id is

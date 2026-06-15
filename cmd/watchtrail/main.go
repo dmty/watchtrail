@@ -76,7 +76,7 @@ func runServe(cfgPath string) error {
 		CompletionThreshold: cfg.CompletionThreshold,
 		ProgressCadence:     time.Duration(cfg.ProgressCadenceSeconds) * time.Second,
 	}
-	pipeline := ingest.NewPipeline(repo, sessCfg, time.Now)
+	pipeline := ingest.NewPipeline(repo, sessCfg, time.Now, nil)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()

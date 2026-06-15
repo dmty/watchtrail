@@ -20,7 +20,7 @@ func TestRootMuxRoutes(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer repo.Close()
-	pipeline := ingest.NewPipeline(repo, sessionize.Config{}, time.Now)
+	pipeline := ingest.NewPipeline(repo, sessionize.Config{}, time.Now, nil)
 
 	root := http.NewServeMux()
 	root.Handle("/ingest", pipeline.HTTPHandler(""))

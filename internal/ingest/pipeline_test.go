@@ -19,7 +19,32 @@ func newTestPipeline(t *testing.T) (*Pipeline, store.Repository) {
 	t.Cleanup(func() { _ = repo.Close() })
 	fixed := time.Date(2026, 6, 14, 10, 0, 0, 0, time.UTC)
 	cfg := sessionize.Config{SessionGap: 30 * time.Minute, CompletionThreshold: 0.9, ProgressCadence: 30 * time.Second}
-	return NewPipeline(repo, cfg, func() time.Time { return fixed }), repo
+	return NewPipeline(repo, cfg, func() time.Time { return fixed }, nil), repo
+}
+
+type spyNotifier struct{ n int }
+
+func (s *spyNotifier) Publish() { s.n++ }
+
+func TestProcessPublishesAfterAssign(t *testing.T) {
+	repo, err := store.Open(filepath.Join(t.TempDir(), "p.db"))
+	if err != nil {
+		t.Fatalf("store.Open: %v", err)
+	}
+	t.Cleanup(func() { _ = repo.Close() })
+	fixed := time.Date(2026, 6, 16, 12, 0, 0, 0, time.UTC)
+	spy := &spyNotifier{}
+	p := NewPipeline(repo, sessionize.Config{
+		SessionGap: 30 * time.Minute, CompletionThreshold: 0.9, ProgressCadence: 30 * time.Second,
+	}, func() time.Time { return fixed }, spy)
+
+	raw := []byte(`{"v":1,"event_id":"e1","type":"start","occurred_at":"2026-06-16T12:00:00Z","source_kind":"vlc","media":{"external_id":"file:x","title":"X"}}`)
+	if err := p.Process(context.Background(), raw); err != nil {
+		t.Fatal(err)
+	}
+	if spy.n != 1 {
+		t.Fatalf("Publish called %d times, want 1", spy.n)
+	}
 }
 
 const rawEvent = `{
