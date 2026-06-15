@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"watchtrail/internal/api"
+	"watchtrail/internal/events"
 	"watchtrail/internal/ingest"
 	"watchtrail/internal/sessionize"
 	"watchtrail/internal/store"
@@ -55,7 +56,7 @@ func TestRootMuxServesDashboard(t *testing.T) {
 	}
 	defer repo.Close()
 
-	webHandler, err := web.Handler(repo)
+	webHandler, err := web.Handler(repo, events.New())
 	if err != nil {
 		t.Fatal(err)
 	}

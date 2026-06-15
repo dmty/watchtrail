@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"watchtrail/internal/events"
 	"watchtrail/internal/store"
 )
 
@@ -21,7 +22,7 @@ func newWebServer(t *testing.T, fn func(*store.SQLiteRepo)) *httptest.Server {
 	if fn != nil {
 		fn(repo)
 	}
-	h, err := Handler(repo)
+	h, err := Handler(repo, events.New())
 	if err != nil {
 		t.Fatalf("Handler: %v", err)
 	}

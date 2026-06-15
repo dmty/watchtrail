@@ -15,6 +15,7 @@ import (
 
 	"watchtrail/internal/api"
 	"watchtrail/internal/config"
+	"watchtrail/internal/events"
 	"watchtrail/internal/ingest"
 	"watchtrail/internal/sessionize"
 	"watchtrail/internal/store"
@@ -94,7 +95,7 @@ func runServe(cfgPath string) error {
 	}()
 
 	httpErr := make(chan error, 1)
-	webHandler, err := web.Handler(repo)
+	webHandler, err := web.Handler(repo, events.New())
 	if err != nil {
 		return fmt.Errorf("web: %w", err)
 	}
