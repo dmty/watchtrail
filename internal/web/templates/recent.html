@@ -1,0 +1,10 @@
+{{define "title"}}Recent — WatchTrail{{end}}
+{{define "content"}}
+<h1>Recent <small>watch log</small></h1>
+<form id="filters" class="filters" hx-get="/" hx-target="#sessions" hx-swap="outerHTML" hx-trigger="change, submit">
+  <input type="text" name="source" placeholder="source" value="{{.Filter.Source}}">
+  <input type="date" name="from" value="{{.Filter.From}}">
+  <input type="date" name="to" value="{{.Filter.To}}">
+</form>
+{{template "sessions_rows" .}}
+{{end}}

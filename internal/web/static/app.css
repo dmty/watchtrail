@@ -1,0 +1,71 @@
+@font-face{font-family:"Fraunces";src:url("/static/fonts/fraunces.woff2") format("woff2");font-weight:200 900;font-display:swap}
+@font-face{font-family:"Plex";src:url("/static/fonts/plex-mono.woff2") format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:"Plex";src:url("/static/fonts/plex-mono-600.woff2") format("woff2");font-weight:600;font-display:swap}
+
+:root{
+  --bg:#0e0b09; --surface:#15110d; --ink:#ece3d4; --muted:#8c8270;
+  --line:rgba(236,227,212,.10); --amber:#e6a23c; --amber-dim:rgba(230,162,60,.16);
+}
+*{box-sizing:border-box}
+html{color-scheme:dark}
+body{
+  margin:0; min-height:100vh; color:var(--ink);
+  font:400 15px/1.5 "Plex",ui-monospace,monospace; -webkit-font-smoothing:antialiased;
+  background:var(--bg) radial-gradient(120% 80% at 50% -10%,#1d160e 0%,var(--bg) 58%) fixed;
+}
+/* film grain */
+body::after{
+  content:""; position:fixed; inset:0; pointer-events:none; z-index:99; opacity:.045;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+header.site{
+  display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:1rem;
+  max-width:62rem; margin:0 auto; padding:2.2rem 1.5rem 1.3rem; border-bottom:1px solid var(--line);
+}
+header.site .brand{font-family:"Fraunces"; font-weight:600; font-size:1.5rem; letter-spacing:-.01em}
+header.site .brand b{color:var(--amber)}
+nav{display:flex; gap:1.4rem}
+nav a{
+  color:var(--muted); text-decoration:none; font-size:.74rem; text-transform:uppercase;
+  letter-spacing:.14em; padding-bottom:.25rem; border-bottom:1px solid transparent;
+  transition:color .15s,border-color .15s;
+}
+nav a:hover{color:var(--ink); border-color:var(--amber)}
+main{max-width:62rem; margin:0 auto; padding:2.2rem 1.5rem 4rem; animation:rise .5s ease both}
+@keyframes rise{from{opacity:0; transform:translateY(10px)}to{opacity:1; transform:none}}
+h1{font-family:"Fraunces"; font-weight:300; font-size:clamp(2rem,5vw,3rem); letter-spacing:-.02em; margin:.1rem 0 1.4rem}
+h1 small{font-size:.38em; color:var(--muted); font-style:normal; letter-spacing:.14em; text-transform:uppercase}
+a{color:var(--amber)}
+/* ledger table */
+table{width:100%; border-collapse:collapse; font-size:.9rem}
+thead th{text-align:left; font-weight:400; color:var(--muted); font-size:.68rem; text-transform:uppercase; letter-spacing:.15em; padding:0 .8rem .7rem; border-bottom:1px solid var(--line)}
+tbody td{padding:.72rem .8rem; border-bottom:1px solid var(--line); vertical-align:baseline}
+tbody tr:hover{background:rgba(236,227,212,.025)}
+td:first-child{color:var(--muted); font-variant-numeric:tabular-nums; white-space:nowrap}
+td a{text-decoration:none; color:var(--ink); border-bottom:1px solid transparent}
+td a:hover{border-color:var(--amber); color:var(--amber)}
+.watched{font-variant-numeric:tabular-nums; color:var(--muted)}
+.done{color:var(--amber); text-shadow:0 0 10px rgba(230,162,60,.55)}
+/* source badge */
+.badge{font-size:.64rem; text-transform:uppercase; letter-spacing:.1em; color:var(--amber); background:var(--amber-dim); padding:.18rem .5rem; border-radius:2px; white-space:nowrap}
+/* inputs */
+form.filters{display:flex; gap:.6rem; flex-wrap:wrap; margin:0 0 1.6rem}
+input{background:var(--surface); border:1px solid var(--line); color:var(--ink); font:inherit; font-size:.85rem; padding:.5rem .7rem; border-radius:3px}
+input:focus{outline:none; border-color:var(--amber); box-shadow:0 0 0 1px var(--amber-dim)}
+input::placeholder{color:var(--muted)}
+button{background:transparent; border:1px solid var(--line); color:var(--ink); font:inherit; font-size:.76rem; text-transform:uppercase; letter-spacing:.1em; padding:.55rem 1.1rem; border-radius:3px; cursor:pointer; margin-top:1.2rem; transition:border-color .15s,color .15s}
+button:hover{border-color:var(--amber); color:var(--amber)}
+/* item totals */
+.totals{color:var(--muted); margin:-.6rem 0 1.8rem; font-size:.95rem}
+.totals b{color:var(--ink); font-weight:600}
+/* stats stat-block */
+.cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(8rem,1fr)); border-top:1px solid var(--line); margin:0 0 2.4rem}
+.card{padding:1.4rem 1.2rem; border-bottom:1px solid var(--line); border-right:1px solid var(--line)}
+.card span{display:block; font-family:"Fraunces"; font-weight:300; font-size:2.4rem; line-height:1; letter-spacing:-.02em}
+.card label{display:block; margin-top:.5rem; font-size:.64rem; text-transform:uppercase; letter-spacing:.16em; color:var(--muted)}
+.chart-h{font-family:"Plex",monospace; font-weight:600; font-size:.68rem; text-transform:uppercase; letter-spacing:.16em; color:var(--muted); margin:2rem 0 .2rem}
+canvas{margin:.4rem 0 1.2rem; max-width:100%}
+/* empty / search results */
+.empty,#results p{color:var(--muted); font-style:italic}
+#results div{padding:.6rem 0; border-bottom:1px solid var(--line)}
+#results small{color:var(--muted)}
