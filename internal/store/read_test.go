@@ -150,3 +150,48 @@ func TestMediaSearch(t *testing.T) {
 		t.Fatalf("source search = %+v", bySource)
 	}
 }
+
+func TestSessionsLastPageAndTiebreak(t *testing.T) {
+	r := openTemp(t)
+	ctx := context.Background()
+	base := time.Date(2026, 6, 15, 12, 0, 0, 0, time.UTC)
+	// Two sessions share an identical started_at -> id breaks the tie (DESC).
+	seedSession(t, r, "sb", "m1", "A", "vlc", base, 60, false)
+	seedSession(t, r, "sa", "m2", "B", "vlc", base, 60, false)
+	seedSession(t, r, "sc", "m3", "C", "vlc", base.Add(time.Hour), 60, false)
+
+	// Page size 2: newest (sc) first, then the tie resolved id DESC (sb before sa).
+	page1, next, err := r.Sessions(ctx, SessionFilter{Limit: 2})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := sessionIDs(page1); got[0] != "sc" || got[1] != "sb" {
+		t.Fatalf("page1 = %v want [sc sb]", got)
+	}
+	if next == "" {
+		t.Fatal("expected a next cursor after page 1")
+	}
+	page2, last, err := r.Sessions(ctx, SessionFilter{Limit: 2, Cursor: next})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := sessionIDs(page2); len(got) != 1 || got[0] != "sa" {
+		t.Fatalf("page2 = %v want [sa]", got)
+	}
+	if last != "" {
+		t.Fatalf("expected empty cursor on last page, got %q", last)
+	}
+}
+
+func TestSessionsEmptyAndZeroRate(t *testing.T) {
+	r := openTemp(t)
+	ctx := context.Background()
+	rows, next, err := r.Sessions(ctx, SessionFilter{Limit: 10})
+	if err != nil || len(rows) != 0 || next != "" {
+		t.Fatalf("empty sessions = %v next=%q err=%v", rows, next, err)
+	}
+	sum, err := r.StatsSummary(ctx, nil, nil)
+	if err != nil || sum.Sessions != 0 || sum.CompletionRate != 0 {
+		t.Fatalf("empty summary = %+v err=%v", sum, err)
+	}
+}
