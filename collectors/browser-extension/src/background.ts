@@ -8,6 +8,20 @@ const QUEUE_KEY = "watchtrail_queue";
 const BATCH_MAX = 50;
 const FLUSH_ALARM = "watchtrail-flush";
 
+// Serializes all queue load->mutate->save sequences. chrome.storage.local has no
+// locking, so without this two interleaving async handlers would clobber each
+// other's write and drop buffered events. Runs fn after any prior work settles
+// (resolve or reject), so a thrown task never wedges the chain.
+let lock: Promise<unknown> = Promise.resolve();
+function withLock<T>(fn: () => Promise<T>): Promise<T> {
+  const run = lock.then(fn, fn);
+  lock = run.then(
+    () => undefined,
+    () => undefined,
+  );
+  return run;
+}
+
 async function loadConfig(): Promise<Config> {
   const got = await chrome.storage.local.get(CONFIG_KEY);
   return withDefaults(got[CONFIG_KEY] ?? {});
@@ -38,21 +52,29 @@ async function post(batch: WatchEvent[]): Promise<boolean> {
 async function flush(): Promise<void> {
   const cfg = await loadConfig();
   if (!cfg.enabled) return;
-  await flushOnce({ loadQueue, saveQueue, post, batchMax: BATCH_MAX });
+  // The whole drain->post->ack->save runs under the lock so a concurrent enqueue
+  // cannot invalidate the snapshot flushOnce acks against.
+  await withLock(() => flushOnce({ loadQueue, saveQueue, post, batchMax: BATCH_MAX }));
 }
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg?.kind !== "watchtrail-event") return false;
   (async () => {
-    const cfg = await loadConfig();
-    if (!cfg.enabled) {
+    try {
+      const cfg = await loadConfig();
+      if (!cfg.enabled) {
+        sendResponse({ ok: false });
+        return;
+      }
+      await withLock(async () => {
+        const { queue } = enqueue(await loadQueue(), msg.event as WatchEvent);
+        await saveQueue(queue);
+      });
+      void flush();
+      sendResponse({ ok: true });
+    } catch {
       sendResponse({ ok: false });
-      return;
     }
-    const { queue } = enqueue(await loadQueue(), msg.event as WatchEvent);
-    await saveQueue(queue);
-    void flush();
-    sendResponse({ ok: true });
   })();
   return true; // keep the message channel open for the async response
 });
