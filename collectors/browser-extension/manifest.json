@@ -4,6 +4,11 @@
   "version": "0.0.1",
   "description": "Local watch-history collector for the browser.",
   "background": { "service_worker": "dist/background.js" },
-  "permissions": ["storage", "alarms", "scripting"],
+  "action": { "default_popup": "dist/popup.html" },
+  "content_scripts": [
+    { "matches": ["*://*.youtube.com/*"], "js": ["dist/content.js"], "run_at": "document_idle" }
+  ],
+  "permissions": ["storage", "alarms", "scripting", "tabs"],
+  "optional_host_permissions": ["*://*/*"],
   "host_permissions": ["http://127.0.0.1/*"]
 }
