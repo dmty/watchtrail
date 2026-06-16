@@ -9,9 +9,9 @@ import (
 	"watchtrail/internal/events"
 )
 
-// handleEvents streams Server-Sent Events: a contentless "update" on each broker
-// ping, plus a periodic heartbeat comment. The client (Recent page) re-fetches
-// its session fragment on update. Read-only, loopback (no auth).
+// handleEvents streams Server-Sent Events: an "update" carrying the changed media
+// id on each broker ping, plus a periodic heartbeat comment. Recent re-fetches on
+// any update; the Item page filters on the id. Read-only, loopback (no auth).
 func handleEvents(broker *events.Broker) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		flusher, ok := w.(http.Flusher)
