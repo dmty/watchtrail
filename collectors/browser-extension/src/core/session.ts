@@ -1,0 +1,42 @@
+import type { EventType } from "./event";
+
+export type NativeKind = "play" | "pause" | "seeked" | "ended" | "timeupdate" | "hide";
+
+export const PROGRESS_INTERVAL_MS = 30_000;
+
+export interface SessionState {
+  started: boolean;
+  lastProgressMs: number;
+}
+
+export function newSession(): SessionState {
+  return { started: false, lastProgressMs: 0 };
+}
+
+export function step(
+  state: SessionState,
+  native: NativeKind,
+  nowMs: number,
+): { state: SessionState; type: EventType | null } {
+  switch (native) {
+    case "play":
+      if (!state.started) {
+        return { state: { started: true, lastProgressMs: nowMs }, type: "start" };
+      }
+      return { state, type: "resume" };
+    case "pause":
+      return state.started ? { state, type: "pause" } : { state, type: null };
+    case "seeked":
+      return state.started ? { state, type: "seek" } : { state, type: null };
+    case "ended":
+    case "hide":
+      return state.started
+        ? { state: { started: false, lastProgressMs: state.lastProgressMs }, type: "stop" }
+        : { state, type: null };
+    case "timeupdate":
+      if (state.started && nowMs - state.lastProgressMs >= PROGRESS_INTERVAL_MS) {
+        return { state: { started: true, lastProgressMs: nowMs }, type: "progress" };
+      }
+      return { state, type: null };
+  }
+}
