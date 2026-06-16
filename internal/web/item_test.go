@@ -37,3 +37,20 @@ func TestItemNotFound(t *testing.T) {
 		t.Fatalf("missing 404 page: %q", body)
 	}
 }
+
+func TestItemHTMXReturnsFragmentOnly(t *testing.T) {
+	base := time.Date(2026, 6, 16, 12, 0, 0, 0, time.UTC)
+	srv := newWebServer(t, func(r *store.SQLiteRepo) {
+		seedWebSession(t, r, "s1", "mX", "The Film", "vlc", base, 100, true)
+	})
+	status, body := bodyOf(t, srv.URL+"/item/mX", true)
+	if status != 200 {
+		t.Fatalf("status %d", status)
+	}
+	if strings.Contains(body, "<html") || strings.Contains(body, "Recent") {
+		t.Fatalf("htmx item request must return the fragment only: %q", body)
+	}
+	if !strings.Contains(body, `id="item-detail"`) || !strings.Contains(body, "watched total") {
+		t.Fatalf("fragment missing the detail block: %q", body)
+	}
+}

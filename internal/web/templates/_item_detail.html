@@ -1,0 +1,13 @@
+{{define "item_detail"}}
+<div id="item-detail">
+<p class="totals">started {{.Starts}}×, finished {{.Completions}}×, <b>{{watchedFmt .WatchedSeconds}}</b> watched total</p>
+<table>
+  <thead><tr><th>When</th><th>Watched</th><th>Done</th></tr></thead>
+  <tbody>
+    {{range .Sessions}}
+    <tr><td>{{localTime .StartedAt}}</td><td class="watched">{{watchedFmt .WatchedSeconds}}</td><td class="done">{{if .Completed}}✓{{end}}</td></tr>
+    {{end}}
+  </tbody>
+</table>
+</div>
+{{end}}

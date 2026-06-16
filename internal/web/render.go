@@ -65,7 +65,11 @@ var pageFiles = map[string]string{
 }
 
 // fragmentFiles are partials rendered standalone for htmx swaps.
-var fragmentFiles = []string{"templates/_sessions_rows.html", "templates/_search_results.html"}
+var fragmentFiles = []string{
+	"templates/_sessions_rows.html",
+	"templates/_search_results.html",
+	"templates/_item_detail.html",
+}
 
 func newRenderer() (*renderer, error) {
 	pages := make(map[string]*template.Template, len(pageFiles))

@@ -15,6 +15,7 @@ type itemSession struct {
 }
 
 type itemPageData struct {
+	ID             string
 	Title          string
 	Kind           string
 	Starts         int
@@ -41,7 +42,7 @@ func handleItem(repo store.Repository, rn *renderer) http.HandlerFunc {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
-		data := itemPageData{Title: m.Title, Kind: m.Kind, Starts: len(sessions)}
+		data := itemPageData{ID: id, Title: m.Title, Kind: m.Kind, Starts: len(sessions)}
 		if data.Title == "" {
 			data.Title = m.ExternalID
 		}
@@ -53,6 +54,10 @@ func handleItem(repo store.Repository, rn *renderer) http.HandlerFunc {
 			data.Sessions = append(data.Sessions, itemSession{
 				StartedAt: s.StartedAt, WatchedSeconds: s.WatchedSeconds, Completed: s.Completed,
 			})
+		}
+		if isHTMX(r) {
+			_ = rn.fragment(w, "item_detail", data)
+			return
 		}
 		_ = rn.page(w, "item", data)
 	}
