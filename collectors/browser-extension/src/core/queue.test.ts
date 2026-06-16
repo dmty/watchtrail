@@ -30,4 +30,13 @@ describe("queue", () => {
     expect(queue[0].event_id).toBe("e1");
     expect(queue[MAX_QUEUE - 1].event_id).toBe("new");
   });
+
+  it("drops multiple when enqueue pushes well over the cap", () => {
+    const big: WatchEvent[] = [];
+    for (let i = 0; i < MAX_QUEUE + 5; i++) big.push(ev("e" + i));
+    const { queue, dropped } = enqueue(big, ev("new"));
+    expect(dropped).toBe(6); // 5 over + the new one
+    expect(queue.length).toBe(MAX_QUEUE);
+    expect(queue[MAX_QUEUE - 1].event_id).toBe("new");
+  });
 });

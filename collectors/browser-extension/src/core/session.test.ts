@@ -42,4 +42,9 @@ describe("session step", () => {
     const s = step(newSession(), "play", 0).state;
     expect(step(s, "seeked", 1000).type).toBe("seek");
   });
+
+  it("emits progress at exactly the 30s boundary", () => {
+    const s = step(newSession(), "play", 1000).state; // lastProgress = 1000
+    expect(step(s, "timeupdate", 31000).type).toBe("progress"); // exactly +30000, >= boundary
+  });
 });

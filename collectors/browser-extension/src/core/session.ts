@@ -31,11 +31,11 @@ export function step(
     case "ended":
     case "hide":
       return state.started
-        ? { state: { started: false, lastProgressMs: state.lastProgressMs }, type: "stop" }
+        ? { state: { ...state, started: false }, type: "stop" }
         : { state, type: null };
     case "timeupdate":
       if (state.started && nowMs - state.lastProgressMs >= PROGRESS_INTERVAL_MS) {
-        return { state: { started: true, lastProgressMs: nowMs }, type: "progress" };
+        return { state: { ...state, lastProgressMs: nowMs }, type: "progress" };
       }
       return { state, type: null };
   }

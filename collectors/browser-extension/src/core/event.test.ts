@@ -33,4 +33,11 @@ describe("buildEvent", () => {
     const ev = buildEvent({ type: "stop", identity: idy, meta: { foo: 1 } }, () => "t", () => "id");
     expect(ev.meta).toEqual({ foo: 1 });
   });
+
+  it("keeps a zero position_seconds (present, not omitted)", () => {
+    const idy = { source_kind: "web", external_id: "x" } as const;
+    const ev = buildEvent({ type: "progress", identity: idy, position_seconds: 0 }, () => "t", () => "id");
+    expect(ev.position_seconds).toBe(0);
+    expect("position_seconds" in ev).toBe(true);
+  });
 });
