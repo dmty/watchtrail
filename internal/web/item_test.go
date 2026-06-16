@@ -54,3 +54,28 @@ func TestItemHTMXReturnsFragmentOnly(t *testing.T) {
 		t.Fatalf("fragment missing the detail block: %q", body)
 	}
 }
+
+func TestItemFullPageHasLiveScript(t *testing.T) {
+	base := time.Date(2026, 6, 16, 12, 0, 0, 0, time.UTC)
+	srv := newWebServer(t, func(r *store.SQLiteRepo) {
+		seedWebSession(t, r, "s1", "mX", "The Film", "vlc", base, 100, true)
+	})
+	_, body := bodyOf(t, srv.URL+"/item/mX", false)
+	if !strings.Contains(body, "new EventSource('/events')") {
+		t.Fatalf("item full page should include the live script: %q", body)
+	}
+	if !strings.Contains(body, "mX") {
+		t.Fatalf("live script should carry the media id: %q", body)
+	}
+}
+
+func TestItemFragmentHasNoLiveScript(t *testing.T) {
+	base := time.Date(2026, 6, 16, 12, 0, 0, 0, time.UTC)
+	srv := newWebServer(t, func(r *store.SQLiteRepo) {
+		seedWebSession(t, r, "s1", "mX", "The Film", "vlc", base, 100, true)
+	})
+	_, body := bodyOf(t, srv.URL+"/item/mX", true)
+	if strings.Contains(body, "EventSource") {
+		t.Fatalf("item fragment must not re-include the EventSource script: %q", body)
+	}
+}
