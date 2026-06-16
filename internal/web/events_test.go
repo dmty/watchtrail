@@ -43,13 +43,20 @@ func TestEventsStreamPushesUpdate(t *testing.T) {
 	if l := readLine(); l != ": connected" {
 		t.Fatalf("first line = %q", l)
 	}
-	broker.Publish()
-	for i := 0; i < 6; i++ {
-		if readLine() == "event: update" {
+	broker.Publish("media-xyz")
+	sawEvent, sawData := false, false
+	for i := 0; i < 8; i++ {
+		switch readLine() {
+		case "event: update":
+			sawEvent = true
+		case "data: media-xyz":
+			sawData = true
+		}
+		if sawEvent && sawData {
 			return // success
 		}
 	}
-	t.Fatal("did not receive 'event: update'")
+	t.Fatal("did not receive 'event: update' with 'data: media-xyz'")
 }
 
 // nonFlusherWriter wraps a ResponseRecorder but deliberately does NOT promote

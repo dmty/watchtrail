@@ -5,13 +5,16 @@ import (
 	"testing"
 )
 
-func TestPublishDelivers(t *testing.T) {
+func TestPublishDeliversID(t *testing.T) {
 	b := New()
 	ch, cancel := b.Subscribe()
 	defer cancel()
-	b.Publish()
+	b.Publish("m1")
 	select {
-	case <-ch:
+	case id := <-ch:
+		if id != "m1" {
+			t.Fatalf("got id %q, want m1", id)
+		}
 	default:
 		t.Fatal("expected a signal after Publish")
 	}
@@ -21,10 +24,10 @@ func TestPublishCoalesces(t *testing.T) {
 	b := New()
 	ch, cancel := b.Subscribe()
 	defer cancel()
-	b.Publish()
-	b.Publish()
-	b.Publish()
-	// cap-1 channel: exactly one pending signal, extras dropped.
+	b.Publish("m1")
+	b.Publish("m1")
+	b.Publish("m1")
+	// cap-1 channel: exactly one pending value, extras dropped.
 	<-ch
 	select {
 	case <-ch:
@@ -38,7 +41,7 @@ func TestCancelUnsubscribes(t *testing.T) {
 	ch, cancel := b.Subscribe()
 	cancel()
 	cancel() // idempotent
-	b.Publish()
+	b.Publish("m1")
 	select {
 	case <-ch:
 		t.Fatal("cancelled subscriber should receive nothing")
@@ -47,7 +50,7 @@ func TestCancelUnsubscribes(t *testing.T) {
 }
 
 func TestConcurrentPublishSubscribe(t *testing.T) {
-	// Run with -race: exercises the mutex under concurrent pub/sub.
+	// Run with -race.
 	b := New()
 	var wg sync.WaitGroup
 	for i := 0; i < 8; i++ {
@@ -57,7 +60,7 @@ func TestConcurrentPublishSubscribe(t *testing.T) {
 			ch, cancel := b.Subscribe()
 			defer cancel()
 			for j := 0; j < 200; j++ {
-				b.Publish()
+				b.Publish("m")
 				select {
 				case <-ch:
 				default:

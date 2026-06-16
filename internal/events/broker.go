@@ -1,6 +1,6 @@
 // Package events is a tiny in-process pub/sub for "something changed" pings.
-// It carries no domain data: a single contentless signal tells subscribers to
-// re-read whatever they display. Publish never blocks the publisher.
+// The signal is a media item id, telling subscribers which item changed so they
+// can decide whether to refresh. Publish never blocks the publisher.
 package events
 
 import "sync"
@@ -8,20 +8,21 @@ import "sync"
 // Broker fans a Publish out to every current subscriber. Safe for concurrent use.
 type Broker struct {
 	mu   sync.Mutex
-	subs map[int]chan struct{}
+	subs map[int]chan string
 	next int
 }
 
 // New returns a ready Broker.
 func New() *Broker {
-	return &Broker{subs: make(map[int]chan struct{})}
+	return &Broker{subs: make(map[int]chan string)}
 }
 
-// Subscribe registers a subscriber and returns its signal channel plus a cancel
-// func that unsubscribes (idempotent). The channel has capacity 1, so repeated
-// Publishes with no reader coalesce into a single pending signal.
-func (b *Broker) Subscribe() (<-chan struct{}, func()) {
-	ch := make(chan struct{}, 1)
+// Subscribe registers a subscriber and returns its signal channel (carrying the
+// changed media id) plus a cancel func that unsubscribes (idempotent). The channel
+// has capacity 1, so repeated Publishes with no reader coalesce to a single pending
+// signal.
+func (b *Broker) Subscribe() (<-chan string, func()) {
+	ch := make(chan string, 1)
 	b.mu.Lock()
 	id := b.next
 	b.next++
@@ -36,15 +37,15 @@ func (b *Broker) Subscribe() (<-chan struct{}, func()) {
 	return ch, cancel
 }
 
-// Publish sends a non-blocking signal to every subscriber. A subscriber whose
-// buffer is full (already has a pending signal) is skipped — it will see the
-// pending one. The publisher never blocks on a slow or absent reader.
-func (b *Broker) Publish() {
+// Publish sends mediaID to every subscriber, non-blocking. A subscriber whose
+// buffer is full (already has a pending signal) is skipped. The publisher never
+// blocks on a slow or absent reader.
+func (b *Broker) Publish(mediaID string) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	for _, ch := range b.subs {
 		select {
-		case ch <- struct{}{}:
+		case ch <- mediaID:
 		default:
 		}
 	}

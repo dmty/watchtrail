@@ -22,9 +22,15 @@ func newTestPipeline(t *testing.T) (*Pipeline, store.Repository) {
 	return NewPipeline(repo, cfg, func() time.Time { return fixed }, nil), repo
 }
 
-type spyNotifier struct{ n int }
+type spyNotifier struct {
+	n      int
+	lastID string
+}
 
-func (s *spyNotifier) Publish() { s.n++ }
+func (s *spyNotifier) Publish(mediaID string) {
+	s.n++
+	s.lastID = mediaID
+}
 
 func TestProcessPublishesAfterAssign(t *testing.T) {
 	repo, err := store.Open(filepath.Join(t.TempDir(), "p.db"))
@@ -44,6 +50,9 @@ func TestProcessPublishesAfterAssign(t *testing.T) {
 	}
 	if spy.n != 1 {
 		t.Fatalf("Publish called %d times, want 1", spy.n)
+	}
+	if spy.lastID == "" {
+		t.Fatal("Publish should carry the media id")
 	}
 }
 

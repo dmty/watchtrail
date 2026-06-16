@@ -15,16 +15,16 @@ import (
 // collector input but always keeps the original in raw.
 const maxPositionSeconds = 30 * 24 * 3600
 
-// Notifier receives a contentless ping after each event is sessionized, so the
-// dashboard can push a live update. The pipeline depends only on this interface,
+// Notifier receives the id of the media whose session changed, so the dashboard
+// can push a targeted live update. The pipeline depends only on this interface,
 // never on the concrete broker — keeping ingest decoupled from the web layer.
 type Notifier interface {
-	Publish()
+	Publish(mediaID string)
 }
 
 type nopNotifier struct{}
 
-func (nopNotifier) Publish() {}
+func (nopNotifier) Publish(string) {}
 
 // Pipeline is the single path every transport feeds. It owns no transport detail.
 type Pipeline struct {
@@ -81,8 +81,9 @@ func (p *Pipeline) Process(ctx context.Context, raw []byte) error {
 	if _, err := p.sess.Assign(ctx, stored); err != nil {
 		return err
 	}
-	// Session committed — ping any live dashboard. Non-blocking; cannot fail ingest.
-	p.notify.Publish()
+	// Session committed — ping any live dashboard with the changed media id.
+	// Non-blocking; cannot fail ingest.
+	p.notify.Publish(stored.MediaItemID)
 	return nil
 }
 
