@@ -40,13 +40,14 @@ export const youtubeAdapter: Adapter = {
   identity: () => youtubeIdentity(location.href),
   details: (video): MediaDetails => {
     const sel = selectedAudioFromDom();
+    const meta = { ...channelMeta(), ...audioMeta(sel) };
     return {
       title: videoTitle(),
       duration_seconds: Number.isFinite(video.duration) ? Math.round(video.duration) : undefined,
       url_or_path: location.href,
       kind: "video",
       language: sel.language,
-      meta: { ...channelMeta(), ...audioMeta(sel) },
+      meta: Object.keys(meta).length > 0 ? meta : undefined,
     };
   },
 };
