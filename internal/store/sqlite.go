@@ -80,9 +80,10 @@ func (r *SQLiteRepo) FindOrCreateMediaItem(ctx context.Context, m MediaItem) (st
 			    SET title            = COALESCE(NULLIF(title, ''), ?),
 			        duration_seconds = COALESCE(duration_seconds, ?),
 			        url_or_path      = COALESCE(NULLIF(url_or_path, ''), ?),
+			        language         = COALESCE(NULLIF(?, ''), language),
 			        updated_at       = ?
 			  WHERE id = ?`,
-			nullStr(m.Title), m.DurationSeconds, nullStr(m.URLOrPath),
+			nullStr(m.Title), m.DurationSeconds, nullStr(m.URLOrPath), m.Language,
 			time.Now().UTC().Format(time.RFC3339Nano), id); uerr != nil {
 			return "", uerr
 		}
@@ -101,11 +102,11 @@ func (r *SQLiteRepo) FindOrCreateMediaItem(ctx context.Context, m MediaItem) (st
 	_, err = r.db.ExecContext(ctx,
 		`INSERT INTO media_item
 		   (id, source_kind, external_id, identity_key, kind, title, url_or_path,
-		    duration_seconds, metadata, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		    duration_seconds, language, metadata, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		 ON CONFLICT(identity_key) DO NOTHING`,
 		id, m.SourceKind, m.ExternalID, m.IdentityKey, kind,
-		nullStr(m.Title), nullStr(m.URLOrPath), m.DurationSeconds, nullJSON(m.Metadata),
+		nullStr(m.Title), nullStr(m.URLOrPath), m.DurationSeconds, nullStr(m.Language), nullJSON(m.Metadata),
 		now, now)
 	if err != nil {
 		return "", err

@@ -18,6 +18,7 @@ type MediaItem struct {
 	Title           string
 	URLOrPath       string
 	DurationSeconds *int
+	Language        string
 	Metadata        json.RawMessage
 	CreatedAt       time.Time
 	UpdatedAt       time.Time

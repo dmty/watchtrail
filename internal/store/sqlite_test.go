@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"database/sql"
 	"path/filepath"
 	"testing"
 	"time"
@@ -107,6 +108,48 @@ func TestInsertEventIsIdempotent(t *testing.T) {
 	}
 	if n != 1 {
 		t.Fatalf("CountEvents = %d, want 1 (idempotent)", n)
+	}
+}
+
+func readLang(t *testing.T, repo *SQLiteRepo, id string) string {
+	t.Helper()
+	var s sql.NullString
+	if err := repo.db.QueryRow(`SELECT language FROM media_item WHERE id=?`, id).Scan(&s); err != nil {
+		t.Fatalf("read language: %v", err)
+	}
+	return s.String
+}
+
+func TestFindOrCreateMediaItemLanguageLastSeen(t *testing.T) {
+	repo := openTemp(t)
+	ctx := context.Background()
+
+	m := sampleMedia()
+	m.Language = "en"
+	id, err := repo.FindOrCreateMediaItem(ctx, m)
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	if got := readLang(t, repo, id); got != "en" {
+		t.Fatalf("insert language: got %q want en", got)
+	}
+
+	// A non-empty incoming language overwrites (last-seen wins).
+	m.Language = "ja"
+	if _, err := repo.FindOrCreateMediaItem(ctx, m); err != nil {
+		t.Fatalf("update: %v", err)
+	}
+	if got := readLang(t, repo, id); got != "ja" {
+		t.Fatalf("overwrite: got %q want ja", got)
+	}
+
+	// An empty incoming language must NOT clobber the stored value.
+	m.Language = ""
+	if _, err := repo.FindOrCreateMediaItem(ctx, m); err != nil {
+		t.Fatalf("empty update: %v", err)
+	}
+	if got := readLang(t, repo, id); got != "ja" {
+		t.Fatalf("empty clobbered: got %q want ja", got)
 	}
 }
 
