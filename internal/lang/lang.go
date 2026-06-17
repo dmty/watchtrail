@@ -1,6 +1,7 @@
-// Package lang normalizes collector-supplied audio-track language codes to a
+// Package lang normalizes collector-supplied audio-track language values to a
 // consistent lower-cased BCP-47 primary subtag, so the store can group and
-// filter across sources that report ISO 639-2 (VLC) or BCP-47 (browser).
+// filter across sources that report ISO 639-2 codes (VLC), BCP-47 (browser),
+// or full English language names (VLC's item:info() humanizes the code).
 package lang
 
 import "strings"
@@ -17,12 +18,28 @@ var iso6392to1 = map[string]string{
 	"heb": "he", "dan": "da", "fin": "fi", "nor": "no", "hun": "hu",
 }
 
-// Normalize returns a lower-cased BCP-47 primary subtag for code, preserving any
-// region subtag. Empty, whitespace, and "und" return "".
-func Normalize(code string) string {
-	c := strings.ToLower(strings.TrimSpace(code))
-	if c == "" || c == "und" {
+// englishName maps the full English language names VLC surfaces (e.g. "Japanese")
+// to their BCP-47 code. Unlisted names fall through and are kept verbatim.
+var englishName = map[string]string{
+	"japanese": "ja", "english": "en", "spanish": "es", "french": "fr",
+	"german": "de", "italian": "it", "portuguese": "pt", "russian": "ru",
+	"chinese": "zh", "korean": "ko", "arabic": "ar", "hindi": "hi",
+	"dutch": "nl", "polish": "pl", "swedish": "sv", "turkish": "tr",
+	"vietnamese": "vi", "thai": "th", "indonesian": "id", "ukrainian": "uk",
+	"czech": "cs", "romanian": "ro", "greek": "el", "hebrew": "he",
+	"danish": "da", "finnish": "fi", "norwegian": "no", "hungarian": "hu",
+}
+
+// Normalize returns a lower-cased BCP-47 primary subtag for value, preserving any
+// region subtag. value may be an ISO 639-2/639-1 code or a full English language
+// name. Empty, whitespace, "und", and "undetermined" return "".
+func Normalize(value string) string {
+	c := strings.ToLower(strings.TrimSpace(value))
+	if c == "" || c == "und" || c == "undetermined" {
 		return ""
+	}
+	if mapped, ok := englishName[c]; ok {
+		return mapped
 	}
 	primary, rest, hasRest := strings.Cut(c, "-")
 	if mapped, ok := iso6392to1[primary]; ok {

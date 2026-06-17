@@ -14,10 +14,15 @@ func TestNormalize(t *testing.T) {
 		"EN":     "en",
 		"es-419": "es-419",
 		"pt-BR":  "pt-br",
-		"und":    "",
-		"":       "",
-		"   ":    "",
-		"xyz":    "xyz",
+		"und":          "",
+		"undetermined": "",
+		"":             "",
+		"   ":          "",
+		"xyz":          "xyz",
+		"Japanese":     "ja",
+		"english":      "en",
+		"  Spanish  ":  "es",
+		"Klingon":      "klingon",
 	}
 	for in, want := range cases {
 		if got := Normalize(in); got != want {
