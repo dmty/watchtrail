@@ -5,6 +5,7 @@ export interface MediaDetails {
   duration_seconds?: number;
   url_or_path?: string;
   kind?: string;
+  language?: string;
   meta?: Record<string, unknown>;
 }
 

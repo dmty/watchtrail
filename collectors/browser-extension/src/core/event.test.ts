@@ -40,4 +40,13 @@ describe("buildEvent", () => {
     expect(ev.position_seconds).toBe(0);
     expect("position_seconds" in ev).toBe(true);
   });
+
+  it("threads audio language onto media", () => {
+    const ev = buildEvent(
+      { type: "progress", identity: yt, language: "es-419" },
+      () => "t",
+      () => "id",
+    );
+    expect(ev.media.language).toBe("es-419");
+  });
 });

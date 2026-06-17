@@ -8,6 +8,7 @@ export interface MediaInfo {
   title?: string;
   url_or_path?: string;
   duration_seconds?: number;
+  language?: string;
 }
 
 export interface WatchEvent {
@@ -28,6 +29,7 @@ export interface BuildInput {
   position_seconds?: number;
   title?: string;
   duration_seconds?: number;
+  language?: string;
   url_or_path?: string;
   kind?: string;
   meta?: Record<string, unknown>;
@@ -44,6 +46,7 @@ export function buildEvent(
   if (input.title !== undefined) media.title = input.title;
   if (input.url_or_path !== undefined) media.url_or_path = input.url_or_path;
   if (input.duration_seconds !== undefined) media.duration_seconds = input.duration_seconds;
+  if (input.language !== undefined) media.language = input.language;
 
   const ev: WatchEvent = {
     v: 1,
