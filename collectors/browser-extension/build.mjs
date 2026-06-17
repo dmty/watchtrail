@@ -2,11 +2,11 @@ import { build } from "esbuild";
 import { copyFileSync } from "node:fs";
 
 await build({
-  entryPoints: ["src/background.ts", "src/content.ts", "src/popup.ts"],
+  entryPoints: ["src/background.ts", "src/content.ts", "src/popup.ts", "src/youtube-audio.ts"],
   bundle: true,
   format: "iife",
   outdir: "dist",
-  target: "chrome110",
+  target: "chrome111",
   logLevel: "info",
 });
 

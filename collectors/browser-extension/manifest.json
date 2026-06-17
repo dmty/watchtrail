@@ -6,7 +6,8 @@
   "background": { "service_worker": "dist/background.js" },
   "action": { "default_popup": "dist/popup.html" },
   "content_scripts": [
-    { "matches": ["*://*.youtube.com/*"], "js": ["dist/content.js"], "run_at": "document_idle" }
+    { "matches": ["*://*.youtube.com/*"], "js": ["dist/content.js"], "run_at": "document_idle" },
+    { "matches": ["*://*.youtube.com/*"], "js": ["dist/youtube-audio.js"], "run_at": "document_start", "world": "MAIN" }
   ],
   "permissions": ["storage", "alarms", "scripting", "tabs"],
   "optional_host_permissions": ["*://*/*"],
