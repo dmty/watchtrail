@@ -109,3 +109,27 @@ func TestInsertEventIsIdempotent(t *testing.T) {
 		t.Fatalf("CountEvents = %d, want 1 (idempotent)", n)
 	}
 }
+
+func TestMediaItemHasLanguageColumn(t *testing.T) {
+	repo := openTemp(t)
+	rows, err := repo.db.Query(`PRAGMA table_info(media_item)`)
+	if err != nil {
+		t.Fatalf("table_info: %v", err)
+	}
+	defer rows.Close()
+	found := false
+	for rows.Next() {
+		var cid, notnull, pk int
+		var name, ctype string
+		var dflt any
+		if err := rows.Scan(&cid, &name, &ctype, &notnull, &dflt, &pk); err != nil {
+			t.Fatalf("scan: %v", err)
+		}
+		if name == "language" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("media_item.language column missing")
+	}
+}
