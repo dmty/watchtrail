@@ -69,6 +69,23 @@ func (r *SQLiteRepo) FindOrCreateMediaItem(ctx context.Context, m MediaItem) (st
 	err := r.db.QueryRowContext(ctx,
 		`SELECT id FROM media_item WHERE identity_key = ?`, m.IdentityKey).Scan(&id)
 	if err == nil {
+		// Enrich, never clobber. The first event for a media item often arrives
+		// before the source has the full picture (e.g. YouTube updates the page
+		// title and the <video>'s duration shortly AFTER playback starts), so
+		// fill in any field we don't yet have from a later event that does carry
+		// it. COALESCE(NULLIF(col,''), ?) keeps an existing non-empty value and
+		// only adopts the incoming one when the stored field is null or empty.
+		if _, uerr := r.db.ExecContext(ctx,
+			`UPDATE media_item
+			    SET title            = COALESCE(NULLIF(title, ''), ?),
+			        duration_seconds = COALESCE(duration_seconds, ?),
+			        url_or_path      = COALESCE(NULLIF(url_or_path, ''), ?),
+			        updated_at       = ?
+			  WHERE id = ?`,
+			nullStr(m.Title), m.DurationSeconds, nullStr(m.URLOrPath),
+			time.Now().UTC().Format(time.RFC3339Nano), id); uerr != nil {
+			return "", uerr
+		}
 		return id, nil
 	}
 	if err != sql.ErrNoRows {
