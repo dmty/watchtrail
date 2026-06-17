@@ -23,6 +23,28 @@ local function new_id()
 end
 local opts = { new_id = new_id, source_instance = INSTANCE }
 
+-- audio_language: best-effort selected audio track language via the VLC 3.x API.
+-- item:info() exposes per-stream categories; multi-track files reliably tag each
+-- audio stream with a Language. Robust selected-track correlation isn't available
+-- across builds, so we take the first audio category carrying a real Language
+-- (single-track files have only one). Returns raw code (e.g. "eng") + nil label.
+local function audio_language(item)
+  local ok, info = pcall(function() return item:info() end)
+  if not ok or type(info) ~= "table" then return nil end
+  for cat, fields in pairs(info) do
+    if type(fields) == "table" then
+      local is_audio = fields["Type"] == "Audio" or (type(cat) == "string" and cat:lower():find("audio", 1, true))
+      if is_audio then
+        local lang = fields["Language"] or fields["language"]
+        if type(lang) == "string" and lang ~= "" and lang:lower() ~= "und" then
+          return lang
+        end
+      end
+    end
+  end
+  return nil
+end
+
 -- read_snapshot: the only VLC-3.x-specific code. Returns plain values for core.step.
 local function read_snapshot()
   local snap = { status = "stopped", occurred_at = os.date("!%Y-%m-%dT%H:%M:%SZ") }
@@ -32,6 +54,8 @@ local function read_snapshot()
   snap.uri = item:uri()
   snap.name = item:name()
   snap.duration = item:duration() -- seconds (float), < 0 if unknown
+  local lang = audio_language(item)
+  if lang then snap.language = lang end
   local input = vlc.object.input()
   if input then
     local t = vlc.var.get(input, "time") -- microseconds
