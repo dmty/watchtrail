@@ -116,5 +116,27 @@ local su = snap("playing", "file:///u.mkv", 0); su.duration = -1
 evs, state = M.step(state, su, opts)
 check(evs[1].media.duration_seconds == nil, "unknown duration omitted")
 
+-- audio language: media.language + meta when the snapshot carries it
+state = {}
+local sl = snap("playing", "file:///lang.mkv", 0)
+sl.language = "ja"; sl.audio_language_label = "Japanese"
+evs, state = M.step(state, sl, opts)
+eq(evs[1].media.language, "ja", "start carries audio language")
+local jl = M.json_encode(evs[1])
+check(jl:find('"audio_language_raw":"ja"', 1, true) ~= nil, "meta carries raw lang")
+check(jl:find('"audio_language_label":"Japanese"', 1, true) ~= nil, "meta carries label")
+
+-- progress also carries language so a mid-playback switch updates last-seen
+local sl2 = snap("playing", "file:///lang.mkv", 30); sl2.language = "en"
+evs, state = M.step(state, sl2, opts)
+eq(evs[1].type, "progress", "second event is progress")
+eq(evs[1].media.language, "en", "progress carries updated language")
+
+-- no language -> media.language omitted, meta stays an empty object
+state = {}
+evs, state = M.step(state, snap("playing", "file:///nolang.mkv", 0), opts)
+check(evs[1].media.language == nil, "no language omitted")
+check(M.json_encode(evs[1]):find('"meta":{}', 1, true) ~= nil, "meta empty without language")
+
 print(string.format("%d tests, %d failures", tests, failures))
 os.exit(failures == 0 and 0 or 1)

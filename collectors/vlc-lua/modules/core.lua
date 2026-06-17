@@ -70,6 +70,16 @@ local function mk_event(etype, snap, opts, full_media)
       media.duration_seconds = math.floor(snap.duration + 0.5)
     end
   end
+  if snap.language and snap.language ~= "" then
+    media.language = snap.language
+  end
+  local meta = {}
+  if snap.language and snap.language ~= "" then
+    meta.audio_language_raw = snap.language
+  end
+  if snap.audio_language_label and snap.audio_language_label ~= "" then
+    meta.audio_language_label = snap.audio_language_label
+  end
   local ev = {
     v = 1,
     event_id = opts.new_id(),
@@ -78,7 +88,7 @@ local function mk_event(etype, snap, opts, full_media)
     source_kind = "vlc",
     source_instance = opts.source_instance,
     media = media,
-    meta = {},
+    meta = meta,
   }
   if snap.position ~= nil then ev.position_seconds = snap.position end
   return ev
