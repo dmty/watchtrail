@@ -42,6 +42,7 @@ async function main(): Promise<void> {
       duration_seconds: d.duration_seconds,
       url_or_path: d.url_or_path,
       kind: d.kind,
+      language: d.language,
       meta: d.meta,
     });
     // After an extension reload/update, content scripts in already-open tabs

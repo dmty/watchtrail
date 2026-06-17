@@ -1,5 +1,16 @@
 import { youtubeIdentity } from "../core/identity";
+import { audioMeta, type SelectedAudio } from "../core/audiolang";
 import type { Adapter, MediaDetails } from "./types";
+
+// The page-world script (youtube-audio.ts) publishes the selected audio track
+// here, since the isolated content script can't call YouTube's player API.
+function selectedAudioFromDom(): SelectedAudio {
+  const ds = document.documentElement.dataset;
+  const out: SelectedAudio = {};
+  if (ds.wtAudioLang && ds.wtAudioLang.toLowerCase() !== "und") out.language = ds.wtAudioLang;
+  if (ds.wtAudioLangLabel) out.label = ds.wtAudioLangLabel;
+  return out;
+}
 
 function channelMeta(): Record<string, unknown> | undefined {
   const el = document.querySelector(
@@ -27,11 +38,15 @@ function videoTitle(): string | undefined {
 export const youtubeAdapter: Adapter = {
   matches: () => location.hostname.endsWith("youtube.com"),
   identity: () => youtubeIdentity(location.href),
-  details: (video): MediaDetails => ({
-    title: videoTitle(),
-    duration_seconds: Number.isFinite(video.duration) ? Math.round(video.duration) : undefined,
-    url_or_path: location.href,
-    kind: "video",
-    meta: channelMeta(),
-  }),
+  details: (video): MediaDetails => {
+    const sel = selectedAudioFromDom();
+    return {
+      title: videoTitle(),
+      duration_seconds: Number.isFinite(video.duration) ? Math.round(video.duration) : undefined,
+      url_or_path: location.href,
+      kind: "video",
+      language: sel.language,
+      meta: { ...channelMeta(), ...audioMeta(sel) },
+    };
+  },
 };
