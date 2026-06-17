@@ -36,4 +36,12 @@ describe("audioMeta", () => {
   it("returns undefined when nothing is set", () => {
     expect(audioMeta({})).toBeUndefined();
   });
+
+  it("builds label only when language is absent", () => {
+    expect(audioMeta({ label: "Japanese" })).toEqual({ audio_language_label: "Japanese" });
+  });
+
+  it("builds language only when label is absent", () => {
+    expect(audioMeta({ language: "ja" })).toEqual({ audio_language_raw: "ja" });
+  });
 });

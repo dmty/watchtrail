@@ -172,6 +172,9 @@ func TestMediaItemHasLanguageColumn(t *testing.T) {
 			found = true
 		}
 	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("rows iteration: %v", err)
+	}
 	if !found {
 		t.Fatal("media_item.language column missing")
 	}

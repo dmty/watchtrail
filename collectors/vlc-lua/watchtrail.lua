@@ -27,7 +27,7 @@ local opts = { new_id = new_id, source_instance = INSTANCE }
 -- item:info() exposes per-stream categories; multi-track files reliably tag each
 -- audio stream with a Language. Robust selected-track correlation isn't available
 -- across builds, so we take the first audio category carrying a real Language
--- (single-track files have only one). Returns raw code (e.g. "eng") + nil label.
+-- (single-track files have only one). Returns the raw code (e.g. "eng") or nil.
 local function audio_language(item)
   local ok, info = pcall(function() return item:info() end)
   if not ok or type(info) ~= "table" then return nil end
