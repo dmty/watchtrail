@@ -25,6 +25,7 @@ type Media struct {
 	Title           string `json:"title,omitempty"`
 	URLOrPath       string `json:"url_or_path,omitempty"`
 	DurationSeconds *int   `json:"duration_seconds,omitempty"`
+	Language        string `json:"language,omitempty"`
 }
 
 // Event is one canonical watch event.

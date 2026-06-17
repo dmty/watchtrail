@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"watchtrail/internal/event"
+	"watchtrail/internal/lang"
 	"watchtrail/internal/sessionize"
 	"watchtrail/internal/store"
 )
@@ -102,6 +103,7 @@ func toMediaItem(ev event.Event) store.MediaItem {
 		Title:           ev.Media.Title,
 		URLOrPath:       ev.Media.URLOrPath,
 		DurationSeconds: ev.Media.DurationSeconds,
+		Language:        lang.Normalize(ev.Media.Language),
 		Metadata:        ev.Meta,
 	}
 }

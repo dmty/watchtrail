@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"watchtrail/internal/event"
 	"watchtrail/internal/sessionize"
 	"watchtrail/internal/store"
 )
@@ -114,6 +115,22 @@ func TestProcessClampsNegativePosition(t *testing.T) {
 	}
 	if pos != 0 {
 		t.Fatalf("position_seconds = %v, want clamped to 0", pos)
+	}
+}
+
+func TestToMediaItemNormalizesLanguage(t *testing.T) {
+	ev := event.Event{
+		SourceKind: "vlc",
+		Media:      event.Media{ExternalID: "file:x", Language: "jpn"},
+	}
+	if got := toMediaItem(ev).Language; got != "ja" {
+		t.Fatalf("language: got %q want ja", got)
+	}
+
+	// und/empty normalize to "".
+	ev.Media.Language = "und"
+	if got := toMediaItem(ev).Language; got != "" {
+		t.Fatalf("und language: got %q want empty", got)
 	}
 }
 
