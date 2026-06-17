@@ -21,6 +21,43 @@ This produces `dist/` (the loadable extension output).
 3. **Load unpacked** → select the `collectors/browser-extension/` directory
    (the one containing `manifest.json`).
 
+## Package (no Developer mode)
+
+`npm run pack` builds and stages a clean extension (just `manifest.json` + `dist/`)
+into `pkg/watchtrail-extension/` and zips it to `pkg/watchtrail-extension.zip`.
+Modern Chrome refuses to install a plain `.crx` outside the Web Store, so there
+are two real ways to run without the Developer-mode toggle:
+
+### A. Self-host + enterprise policy (local, free — recommended for personal use)
+
+Force-install your own `.crx` via Chrome's `ExtensionSettings` policy. No store,
+nothing leaves the machine, and it removes the "disable developer extensions"
+startup nag.
+
+1. `npm run make-crx` — packs `pkg/watchtrail-extension.crx` and, on first run,
+   a key. Move that key to `key.pem` and keep it (it fixes the extension ID);
+   re-run `make-crx` to repack with the same ID.
+2. Load the `.crx` once at `chrome://extensions` to read the **extension ID**.
+3. Fill in `updates.xml`: the `appid` (extension ID) and the absolute `codebase`
+   path to the `.crx`. Bump its `version` (and `manifest.json`'s) on each update.
+4. Set the policy (macOS), then relaunch Chrome and confirm at `chrome://policy`:
+
+   ```
+   defaults write com.google.Chrome ExtensionSettings -dict-add "<EXTENSION_ID>" \
+     '{"installation_mode":"normal_installed","update_url":"file:///ABSOLUTE/PATH/TO/collectors/browser-extension/updates.xml"}'
+   ```
+
+   (Windows: the `Software\Policies\Google\Chrome\ExtensionSettings` registry
+   key; Linux: a JSON policy under `/etc/opt/chrome/policies/managed/`.)
+
+### B. Chrome Web Store, unlisted (simplest install, auto-updates — $5 one-time)
+
+Upload `pkg/watchtrail-extension.zip` to the Web Store dashboard, set visibility
+to **Unlisted** (installable by link, not searchable) or **Private** (your
+Workspace org only). One-time $5 developer registration plus a review pass.
+
+`pkg/`, `*.crx`, and `*.pem` are gitignored — never commit the private key.
+
 ## Configure
 
 Click the WatchTrail toolbar icon:

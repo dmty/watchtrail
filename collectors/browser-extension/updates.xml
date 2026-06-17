@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Update manifest for the self-hosted force-install path. Replace the appid
+     with the extension ID (chrome://extensions), and the codebase path with the
+     absolute path to the built .crx. Bump version here AND in manifest.json on
+     each new build so Chrome picks up updates. -->
+<gupdate xmlns="http://www.google.com/update2/response" protocol="2.0">
+  <app appid="REPLACE_WITH_EXTENSION_ID">
+    <updatecheck codebase="file:///ABSOLUTE/PATH/TO/collectors/browser-extension/pkg/watchtrail-extension.crx" version="0.0.1" />
+  </app>
+</gupdate>
