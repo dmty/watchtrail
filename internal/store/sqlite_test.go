@@ -120,6 +120,49 @@ func readLang(t *testing.T, repo *SQLiteRepo, id string) string {
 	return s.String
 }
 
+func readTitle(t *testing.T, repo *SQLiteRepo, id string) string {
+	t.Helper()
+	var s sql.NullString
+	if err := repo.db.QueryRow(`SELECT title FROM media_item WHERE id=?`, id).Scan(&s); err != nil {
+		t.Fatalf("read title: %v", err)
+	}
+	return s.String
+}
+
+// On a YouTube SPA navigation the first event for the new video can carry the
+// previous video's (stale, non-empty) title before the DOM updates; every later
+// event has the correct title. So title is last-seen-wins: a non-empty incoming
+// title overwrites, an empty one never clobbers.
+func TestFindOrCreateMediaItemTitleLastSeen(t *testing.T) {
+	repo := openTemp(t)
+	ctx := context.Background()
+
+	m := sampleMedia()
+	m.Title = "Stale previous title"
+	id, err := repo.FindOrCreateMediaItem(ctx, m)
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	// The next event carries the correct title -> overwrites the stale one.
+	m.Title = "Correct title"
+	if _, err := repo.FindOrCreateMediaItem(ctx, m); err != nil {
+		t.Fatalf("update: %v", err)
+	}
+	if got := readTitle(t, repo, id); got != "Correct title" {
+		t.Fatalf("overwrite: got %q want %q", got, "Correct title")
+	}
+
+	// An empty incoming title must NOT clobber the stored one (placeholder case).
+	m.Title = ""
+	if _, err := repo.FindOrCreateMediaItem(ctx, m); err != nil {
+		t.Fatalf("empty update: %v", err)
+	}
+	if got := readTitle(t, repo, id); got != "Correct title" {
+		t.Fatalf("empty clobbered: got %q want %q", got, "Correct title")
+	}
+}
+
 func TestFindOrCreateMediaItemLanguageLastSeen(t *testing.T) {
 	repo := openTemp(t)
 	ctx := context.Background()

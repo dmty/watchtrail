@@ -69,15 +69,19 @@ func (r *SQLiteRepo) FindOrCreateMediaItem(ctx context.Context, m MediaItem) (st
 	err := r.db.QueryRowContext(ctx,
 		`SELECT id FROM media_item WHERE identity_key = ?`, m.IdentityKey).Scan(&id)
 	if err == nil {
-		// Enrich, never clobber. The first event for a media item often arrives
-		// before the source has the full picture (e.g. YouTube updates the page
-		// title and the <video>'s duration shortly AFTER playback starts), so
-		// fill in any field we don't yet have from a later event that does carry
-		// it. COALESCE(NULLIF(col,''), ?) keeps an existing non-empty value and
-		// only adopts the incoming one when the stored field is null or empty.
+		// duration_seconds and url_or_path enrich, never clobber: the first event
+		// often arrives before the source has the full picture (YouTube fills in
+		// the <video> duration shortly AFTER playback starts), so we adopt the
+		// incoming value only when the stored one is null/empty.
+		//
+		// title and language are last-seen-wins (COALESCE(NULLIF(?,''), col)): a
+		// non-empty incoming value overwrites, an empty one is ignored. Title needs
+		// this because a YouTube SPA navigation can emit the PREVIOUS video's title
+		// on the new video's first event before the DOM updates — a wrong-but-non-
+		// empty value that enrich-never-clobber would lock in forever.
 		if _, uerr := r.db.ExecContext(ctx,
 			`UPDATE media_item
-			    SET title            = COALESCE(NULLIF(title, ''), ?),
+			    SET title            = COALESCE(NULLIF(?, ''), title),
 			        duration_seconds = COALESCE(duration_seconds, ?),
 			        url_or_path      = COALESCE(NULLIF(url_or_path, ''), ?),
 			        language         = COALESCE(NULLIF(?, ''), language),
