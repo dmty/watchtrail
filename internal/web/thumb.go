@@ -2,6 +2,7 @@
 package web
 
 import (
+	"log"
 	"net/http"
 
 	"watchtrail/internal/store"
@@ -27,7 +28,12 @@ func handleThumb(repo store.Repository, thumbs *thumb.Chain) http.HandlerFunc {
 			return
 		}
 		data, ct, ok, err := thumbs.Get(r.Context(), m)
-		if err != nil || !ok {
+		if err != nil {
+			log.Printf("thumb: get %s: %v", m.ID, err)
+			http.NotFound(w, r)
+			return
+		}
+		if !ok {
 			http.NotFound(w, r)
 			return
 		}

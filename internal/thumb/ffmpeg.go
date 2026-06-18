@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"os/exec"
 	"strconv"
 	"time"
@@ -69,10 +70,12 @@ func (f *FFmpeg) run(ctx context.Context, args []string) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(ctx, ffmpegTimeout)
 	defer cancel()
 	var buf bytes.Buffer
+	var errBuf bytes.Buffer
 	cmd := exec.CommandContext(ctx, f.path, args...)
 	cmd.Stdout = &buf
+	cmd.Stderr = &errBuf
 	if err := cmd.Run(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("ffmpeg: %w: %s", err, bytes.TrimSpace(errBuf.Bytes()))
 	}
 	return buf.Bytes(), nil
 }

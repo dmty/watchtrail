@@ -19,7 +19,7 @@ func TestFrameArgs(t *testing.T) {
 
 func TestCoverArgs(t *testing.T) {
 	args := strings.Join(coverArgs("/m/v.mp4"), " ")
-	for _, want := range []string{"-i /m/v.mp4", "-frames:v 1", "pipe:1"} {
+	for _, want := range []string{"-i /m/v.mp4", "-an", "-map", "0:v", "-frames:v 1", "pipe:1"} {
 		if !strings.Contains(args, want) {
 			t.Errorf("coverArgs missing %q in %q", want, args)
 		}
