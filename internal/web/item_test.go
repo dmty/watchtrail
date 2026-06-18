@@ -2,12 +2,63 @@
 package web
 
 import (
+	"context"
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
 
 	"watchtrail/internal/store"
 )
+
+func TestItemYouTubeCard(t *testing.T) {
+	base := time.Date(2026, 6, 18, 12, 0, 0, 0, time.UTC)
+	var mediaID string
+	srv := newWebServer(t, func(r *store.SQLiteRepo) {
+		id, err := r.FindOrCreateMediaItem(context.Background(), store.MediaItem{
+			SourceKind:  "youtube",
+			ExternalID:  "abc123_-",
+			IdentityKey: "youtube:abc123_-",
+			Kind:        "video",
+			Title:       "Squid Game In Real Life",
+			URLOrPath:   "https://www.youtube.com/watch?v=abc123_-&list=PL1&index=4",
+			Language:    "es-419",
+			Metadata:    json.RawMessage(`{"audio_language_label":"Spanish (Latin America)","channel":"MrBeast"}`),
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		mediaID = id
+		if err := r.UpsertSession(context.Background(), store.Session{
+			ID: "s1", MediaItemID: id, SourceKind: "youtube", SourceInstance: "i1",
+			StartedAt: base, EndedAt: base.Add(60 * time.Second), WatchedSeconds: 60,
+			MaxPositionSeconds: 60, EventCount: 2, CreatedAt: base, UpdatedAt: base,
+		}); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	_, body := bodyOf(t, srv.URL+"/item/"+mediaID, false)
+
+	// Canonical watch link built from the video id — no playlist/index cruft.
+	if !strings.Contains(body, `href="https://www.youtube.com/watch?v=abc123_-"`) {
+		t.Fatalf("missing canonical youtube link: %q", body)
+	}
+	if strings.Contains(body, "list=PL1") {
+		t.Fatalf("link should not carry playlist params: %q", body)
+	}
+	// Thumbnail keyed by video id.
+	if !strings.Contains(body, "https://i.ytimg.com/vi/abc123_-/hqdefault.jpg") {
+		t.Fatalf("missing thumbnail: %q", body)
+	}
+	// Language chip: code + human label.
+	if !strings.Contains(body, "ES-419") || !strings.Contains(body, "Spanish (Latin America)") {
+		t.Fatalf("missing language chip: %q", body)
+	}
+	if !strings.Contains(body, "Watch on YouTube") {
+		t.Fatalf("missing watch label: %q", body)
+	}
+}
 
 func TestItemDetail(t *testing.T) {
 	base := time.Date(2026, 6, 15, 12, 0, 0, 0, time.UTC)

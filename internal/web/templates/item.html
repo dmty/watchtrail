@@ -1,7 +1,29 @@
 {{define "title"}}{{.Title}} — WatchTrail{{end}}
 {{define "content"}}
-<p><a href="/">&larr; Recent</a></p>
-<h1>{{.Title}} <small>{{.Kind}}</small></h1>
+<p class="back"><a href="/">&larr; Recent</a></p>
+
+<article class="media-card{{if not .Thumbnail}} no-art{{end}}">
+  {{if .Thumbnail}}
+  <a class="art" href="{{.Link}}" target="_blank" rel="noopener noreferrer" aria-label="Watch {{.Title}}">
+    <img src="{{.Thumbnail}}" alt="" loading="lazy" decoding="async">
+    <span class="scrim" aria-hidden="true"></span>
+    <span class="play" aria-hidden="true"></span>
+  </a>
+  {{end}}
+  <div class="meta">
+    <div class="tags">
+      <span class="badge">{{sourceBadge .SourceKind}}</span>
+      {{if .LanguageCode}}
+      <span class="chip"{{if .LanguageLabel}} title="{{.LanguageLabel}}"{{end}}><span class="dot" aria-hidden="true"></span>{{.LanguageCode}}{{if .LanguageLabel}}<span class="chip-name"> · {{.LanguageLabel}}</span>{{end}}</span>
+      {{end}}
+    </div>
+    <h1>{{.Title}} <small>{{.Kind}}</small></h1>
+    {{if .Link}}
+    <a class="watch" href="{{.Link}}" target="_blank" rel="noopener noreferrer">{{.LinkLabel}} <span class="arr" aria-hidden="true">↗</span></a>
+    {{end}}
+  </div>
+</article>
+
 {{template "item_detail" .}}
 <script>
 (function () {

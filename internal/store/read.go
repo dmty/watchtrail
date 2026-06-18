@@ -188,16 +188,16 @@ type MediaItemSummary struct {
 // MediaByID returns the full media item, or ok=false if absent (excludes soft-deleted).
 func (r *SQLiteRepo) MediaByID(ctx context.Context, id string) (MediaItem, bool, error) {
 	var m MediaItem
-	var title, urlOrPath, metadata sql.NullString
+	var title, urlOrPath, language, metadata sql.NullString
 	var dur sql.NullInt64
 	var created, updated string
 	err := r.db.QueryRowContext(ctx,
 		`SELECT id, source_kind, external_id, identity_key, kind, title, url_or_path,
-		        duration_seconds, metadata, created_at, updated_at
+		        duration_seconds, language, metadata, created_at, updated_at
 		   FROM media_item
 		  WHERE id = ? AND deleted_at IS NULL`, id).Scan(
 		&m.ID, &m.SourceKind, &m.ExternalID, &m.IdentityKey, &m.Kind, &title, &urlOrPath,
-		&dur, &metadata, &created, &updated)
+		&dur, &language, &metadata, &created, &updated)
 	if err == sql.ErrNoRows {
 		return MediaItem{}, false, nil
 	}
@@ -206,6 +206,7 @@ func (r *SQLiteRepo) MediaByID(ctx context.Context, id string) (MediaItem, bool,
 	}
 	m.Title = title.String
 	m.URLOrPath = urlOrPath.String
+	m.Language = language.String
 	if dur.Valid {
 		v := int(dur.Int64)
 		m.DurationSeconds = &v
