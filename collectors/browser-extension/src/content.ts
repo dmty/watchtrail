@@ -16,10 +16,30 @@ async function isEnabled(): Promise<boolean> {
   return withDefaults(got[CONFIG_KEY] ?? {}).enabled;
 }
 
+// The selected audio track / spoken language lives in the page's own JS world,
+// which the isolated content script cannot read. Inject a MAIN-world probe
+// (bundled separately) that republishes it onto <html> data attributes for the
+// adapter to read. Injecting it from here — instead of registering it as a
+// standalone world:"MAIN" content script — ties its lifecycle to the content
+// script that actually emits events, so the two can never fall out of sync (a
+// separately-injected MAIN-world script was observed running for some tabs but
+// not others while this script kept emitting).
+function injectAudioProbe(): void {
+  try {
+    const s = document.createElement("script");
+    s.src = chrome.runtime.getURL("dist/youtube-audio.js");
+    s.onload = () => s.remove();
+    (document.head || document.documentElement).appendChild(s);
+  } catch {
+    /* best effort: audio language is optional metadata */
+  }
+}
+
 async function main(): Promise<void> {
   if (!(await isEnabled())) return;
 
   const adapter = pickAdapter();
+  if (youtubeAdapter.matches()) injectAudioProbe();
   let state: SessionState = newSession();
   let currentId: string | null = adapter.identity()?.external_id ?? null;
 
