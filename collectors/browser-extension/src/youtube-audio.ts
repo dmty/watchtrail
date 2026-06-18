@@ -5,16 +5,18 @@
 // The shape parsing lives in core/ytaudio.ts (pure, unit-tested against real
 // player payloads); this file is just the DOM/player glue.
 
-import { parseAudioTrack } from "./core/ytaudio";
+import { selectedLanguage } from "./core/ytaudio";
 
 function publish(): void {
   try {
     const player = document.getElementById("movie_player") as unknown as {
       getAudioTrack?: () => unknown;
+      getPlayerResponse?: () => unknown;
     } | null;
     const ds = document.documentElement.dataset;
     if (!player || typeof player.getAudioTrack !== "function") return;
-    const { code, label } = parseAudioTrack(player.getAudioTrack());
+    const response = typeof player.getPlayerResponse === "function" ? player.getPlayerResponse() : undefined;
+    const { code, label } = selectedLanguage(player.getAudioTrack(), response);
     if (code) ds.wtAudioLang = code;
     else delete ds.wtAudioLang;
     if (label) ds.wtAudioLangLabel = label;

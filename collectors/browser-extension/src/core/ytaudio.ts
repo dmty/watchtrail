@@ -43,3 +43,37 @@ export function parseAudioTrack(track: unknown): ParsedAudio {
   if (d.name && d.name !== "Default") out.label = d.name;
   return out;
 }
+
+interface CaptionTrack {
+  languageCode?: string;
+  kind?: string;
+}
+
+function captionTracks(playerResponse: unknown): CaptionTrack[] {
+  const tracks = (playerResponse as {
+    captions?: { playerCaptionsTracklistRenderer?: { captionTracks?: unknown } };
+  })?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+  return Array.isArray(tracks) ? (tracks as CaptionTrack[]) : [];
+}
+
+// asrLanguage returns the spoken language of a single-audio video via its
+// auto-generated (kind:"asr") caption track, which YouTube transcribes from the
+// audio. Translation caption tracks (kind:"") are ignored — they are not the
+// spoken language. No code (no asr track) yields {}.
+export function asrLanguage(playerResponse: unknown): ParsedAudio {
+  for (const t of captionTracks(playerResponse)) {
+    if (t && t.kind === "asr" && typeof t.languageCode === "string" && t.languageCode) {
+      return { code: t.languageCode };
+    }
+  }
+  return {};
+}
+
+// selectedLanguage resolves the language the viewer is hearing: the selected
+// audio track when the video is multi-audio, otherwise the asr-caption spoken
+// language for single-audio videos.
+export function selectedLanguage(audioTrack: unknown, playerResponse: unknown): ParsedAudio {
+  const track = parseAudioTrack(audioTrack);
+  if (track.code) return track;
+  return asrLanguage(playerResponse);
+}
