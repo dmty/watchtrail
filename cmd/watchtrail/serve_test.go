@@ -12,6 +12,7 @@ import (
 	"watchtrail/internal/ingest"
 	"watchtrail/internal/sessionize"
 	"watchtrail/internal/store"
+	"watchtrail/internal/thumb"
 	"watchtrail/internal/web"
 )
 
@@ -57,7 +58,7 @@ func TestRootMuxServesDashboard(t *testing.T) {
 	}
 	defer repo.Close()
 
-	webHandler, err := web.Handler(repo, events.New())
+	webHandler, err := web.Handler(repo, events.New(), thumb.Build(t.TempDir(), nil))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,7 +94,7 @@ func TestRootMuxServesEvents(t *testing.T) {
 	}
 	defer repo.Close()
 	broker := events.New()
-	webHandler, err := web.Handler(repo, broker)
+	webHandler, err := web.Handler(repo, broker, thumb.Build(t.TempDir(), nil))
 	if err != nil {
 		t.Fatal(err)
 	}

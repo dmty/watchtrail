@@ -5,7 +5,8 @@
 <article class="media-card{{if not .Thumbnail}} no-art{{end}}">
   {{if .Thumbnail}}
   <a class="art" href="{{.Link}}" target="_blank" rel="noopener noreferrer" aria-label="Watch {{.Title}}">
-    <img src="{{.Thumbnail}}" alt="" loading="lazy" decoding="async">
+    <img src="{{.Thumbnail}}" alt="" loading="lazy" decoding="async"
+         onerror="this.closest('.media-card').classList.add('no-art');this.remove();">
     <span class="scrim" aria-hidden="true"></span>
     <span class="play" aria-hidden="true"></span>
   </a>

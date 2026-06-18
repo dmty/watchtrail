@@ -9,6 +9,7 @@ import (
 
 	"watchtrail/internal/lang"
 	"watchtrail/internal/store"
+	"watchtrail/internal/thumb"
 )
 
 type itemSession struct {
@@ -50,16 +51,20 @@ func link(m store.MediaItem) (href, label string) {
 	return "", ""
 }
 
-// thumbnail returns a poster image URL for the media, or "" when none exists.
-// YouTube exposes a stable thumbnail endpoint keyed by video id.
-func thumbnail(m store.MediaItem) string {
+// previewURL returns a poster image URL for the media, or "" when none exists.
+// YouTube derives a stable public endpoint from the video id. Local sources
+// (VLC) are served via /thumb/{id} when the chain reports one is obtainable.
+func previewURL(m store.MediaItem, thumbs *thumb.Chain) string {
 	if m.SourceKind == "youtube" && m.ExternalID != "" {
 		return "https://i.ytimg.com/vi/" + url.PathEscape(m.ExternalID) + "/hqdefault.jpg"
+	}
+	if thumbs != nil && thumbs.Available(m) {
+		return "/thumb/" + url.PathEscape(m.ID)
 	}
 	return ""
 }
 
-func handleItem(repo store.Repository, rn *renderer) http.HandlerFunc {
+func handleItem(repo store.Repository, rn *renderer, thumbs *thumb.Chain) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")
 		m, ok, err := repo.MediaByID(r.Context(), id)
@@ -80,7 +85,7 @@ func handleItem(repo store.Repository, rn *renderer) http.HandlerFunc {
 		href, linkLabel := link(m)
 		data := itemPageData{
 			ID: id, Title: m.Title, Kind: m.Kind, SourceKind: m.SourceKind,
-			Link: href, LinkLabel: linkLabel, Thumbnail: thumbnail(m),
+			Link: href, LinkLabel: linkLabel, Thumbnail: previewURL(m, thumbs),
 			LanguageDisplay: lang.DisplayName(m.Language),
 			Starts:          len(sessions),
 		}

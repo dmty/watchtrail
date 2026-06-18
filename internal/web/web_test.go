@@ -10,6 +10,7 @@ import (
 
 	"watchtrail/internal/events"
 	"watchtrail/internal/store"
+	"watchtrail/internal/thumb"
 )
 
 // newWebServer spins an httptest server over the dashboard, seeded by fn.
@@ -22,7 +23,7 @@ func newWebServer(t *testing.T, fn func(*store.SQLiteRepo)) *httptest.Server {
 	if fn != nil {
 		fn(repo)
 	}
-	h, err := Handler(repo, events.New())
+	h, err := Handler(repo, events.New(), thumb.Build(t.TempDir(), nil))
 	if err != nil {
 		t.Fatalf("Handler: %v", err)
 	}

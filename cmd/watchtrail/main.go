@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -19,6 +20,7 @@ import (
 	"watchtrail/internal/ingest"
 	"watchtrail/internal/sessionize"
 	"watchtrail/internal/store"
+	"watchtrail/internal/thumb"
 	"watchtrail/internal/web"
 )
 
@@ -96,8 +98,14 @@ func runServe(cfgPath string) error {
 		close(tcpDone)
 	}()
 
+	thumbsDir := cfg.ThumbsDir
+	if thumbsDir == "" {
+		thumbsDir = filepath.Join(filepath.Dir(cfg.DBPath), "thumbs")
+	}
+	thumbs := thumb.Build(thumbsDir, cfg.ThumbnailSources)
+
 	httpErr := make(chan error, 1)
-	webHandler, err := web.Handler(repo, broker)
+	webHandler, err := web.Handler(repo, broker, thumbs)
 	if err != nil {
 		return fmt.Errorf("web: %w", err)
 	}
