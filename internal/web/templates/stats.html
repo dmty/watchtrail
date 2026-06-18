@@ -24,6 +24,20 @@ Chart.defaults.color = INK;
 Chart.defaults.font.family = "'Plex', ui-monospace, monospace";
 Chart.defaults.font.size = 11;
 Chart.defaults.borderColor = LINE;
+// Render watched seconds as human time (e.g. 5383 -> "1h 30m"), matching the cards.
+function fmtSecs(s) {
+  s = Math.round(s);
+  const h = Math.floor(s / 3600), m = Math.round((s % 3600) / 60);
+  if (h > 0) return m > 0 ? `${h}h ${m}m` : `${h}h`;
+  return m > 0 ? `${m}m` : `${s}s`;
+}
+const donutOpts = {
+  cutout: '62%',
+  plugins: {
+    legend: { position: 'right' },
+    tooltip: { callbacks: { label: (ctx) => ` ${ctx.label}: ${fmtSecs(ctx.parsed)}` } },
+  },
+};
 async function draw() {
   const ot = await (await fetch('/api/v1/stats/over-time?bucket=day')).json();
   new Chart(document.getElementById('overTime'), {
@@ -32,8 +46,10 @@ async function draw() {
             datasets: [{ label: 'watched (s)', data: (ot.buckets||[]).map(b => b.watched_seconds),
               borderColor: AMBER, backgroundColor: 'rgba(230,162,60,.12)', fill: true,
               tension: .3, pointRadius: 2, pointBackgroundColor: AMBER }] },
-    options: { plugins: { legend: { display: false } },
-               scales: { x: { grid: { color: LINE } }, y: { grid: { color: LINE }, beginAtZero: true } } }
+    options: { plugins: { legend: { display: false },
+                 tooltip: { callbacks: { label: (ctx) => ' ' + fmtSecs(ctx.parsed.y) } } },
+               scales: { x: { grid: { color: LINE } },
+                 y: { grid: { color: LINE }, beginAtZero: true, ticks: { callback: (v) => fmtSecs(v) } } } }
   });
   const bs = await (await fetch('/api/v1/stats/by-source')).json();
   new Chart(document.getElementById('bySource'), {
@@ -41,7 +57,7 @@ async function draw() {
     data: { labels: (bs.by_source||[]).map(s => s.source),
             datasets: [{ data: (bs.by_source||[]).map(s => s.watched_seconds),
               backgroundColor: SRC, borderColor: '#15110d', borderWidth: 2 }] },
-    options: { cutout: '62%', plugins: { legend: { position: 'right' } } }
+    options: donutOpts
   });
   const bl = await (await fetch('/api/v1/stats/by-language')).json();
   const langs = bl.by_language || [];
@@ -54,7 +70,7 @@ async function draw() {
       data: { labels: langs.map(l => l.language),
               datasets: [{ data: langs.map(l => l.watched_seconds),
                 backgroundColor: LANGS, borderColor: '#15110d', borderWidth: 2 }] },
-      options: { cutout: '62%', plugins: { legend: { position: 'right' } } }
+      options: donutOpts
     });
   }
 }
