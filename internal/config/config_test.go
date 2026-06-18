@@ -78,3 +78,34 @@ func TestEnvOverridesFile(t *testing.T) {
 		t.Errorf("DBPath = %q, want env override", cfg.DBPath)
 	}
 }
+
+func TestThumbnailDefaults(t *testing.T) {
+	cfg, err := Load(filepath.Join(t.TempDir(), "nope.toml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cfg.ThumbnailSources) != 2 || cfg.ThumbnailSources[0] != "sidecar" || cfg.ThumbnailSources[1] != "frame" {
+		t.Errorf("ThumbnailSources = %v, want [sidecar frame]", cfg.ThumbnailSources)
+	}
+	if cfg.ThumbsDir != "" {
+		t.Errorf("ThumbsDir = %q, want empty", cfg.ThumbsDir)
+	}
+}
+
+func TestThumbnailOverride(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "c.toml")
+	body := "thumbnail_sources = [\"frame\"]\nthumbs_dir = \"/var/thumbs\"\n"
+	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cfg.ThumbnailSources) != 1 || cfg.ThumbnailSources[0] != "frame" {
+		t.Errorf("ThumbnailSources = %v", cfg.ThumbnailSources)
+	}
+	if cfg.ThumbsDir != "/var/thumbs" {
+		t.Errorf("ThumbsDir = %q", cfg.ThumbsDir)
+	}
+}

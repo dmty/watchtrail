@@ -12,13 +12,15 @@ import (
 
 // Config holds all tunables for the core service.
 type Config struct {
-	HTTPAddr               string  `toml:"http_addr"`
-	TCPAddr                string  `toml:"tcp_addr"`
-	Token                  string  `toml:"token"`
-	DBPath                 string  `toml:"db_path"`
-	SessionGapSeconds      int     `toml:"session_gap_seconds"`
-	CompletionThreshold    float64 `toml:"completion_threshold"`
-	ProgressCadenceSeconds int     `toml:"progress_cadence_seconds"`
+	HTTPAddr               string   `toml:"http_addr"`
+	TCPAddr                string   `toml:"tcp_addr"`
+	Token                  string   `toml:"token"`
+	DBPath                 string   `toml:"db_path"`
+	SessionGapSeconds      int      `toml:"session_gap_seconds"`
+	CompletionThreshold    float64  `toml:"completion_threshold"`
+	ProgressCadenceSeconds int      `toml:"progress_cadence_seconds"`
+	ThumbnailSources       []string `toml:"thumbnail_sources"`
+	ThumbsDir              string   `toml:"thumbs_dir"`
 }
 
 func defaults() Config {
@@ -30,6 +32,8 @@ func defaults() Config {
 		SessionGapSeconds:      1800,
 		CompletionThreshold:    0.9,
 		ProgressCadenceSeconds: 30,
+		ThumbnailSources:       []string{"sidecar", "frame"},
+		ThumbsDir:              "",
 	}
 }
 
@@ -55,6 +59,9 @@ func Load(cfgPath string) (Config, error) {
 	}
 	if v, ok := os.LookupEnv("WATCHTRAIL_DB_PATH"); ok {
 		cfg.DBPath = v
+	}
+	if v, ok := os.LookupEnv("WATCHTRAIL_THUMBS_DIR"); ok {
+		cfg.ThumbsDir = v
 	}
 	return cfg, nil
 }
