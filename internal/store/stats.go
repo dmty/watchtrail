@@ -25,6 +25,13 @@ type SourceStat struct {
 	CompletionRate float64
 }
 
+// LanguageStat is watched time for one stored (raw, un-collapsed) language code.
+// Callers collapse regional variants to a primary subtag for display.
+type LanguageStat struct {
+	Language       string
+	WatchedSeconds int
+}
+
 // Bucket is one time bucket of watch activity.
 type Bucket struct {
 	Date           string // YYYY-MM-DD (UTC)
@@ -80,6 +87,34 @@ func (r *SQLiteRepo) StatsBySource(ctx context.Context, from, to *time.Time) ([]
 		}
 		s.CompletionRate = rate(s.Completions, s.Sessions)
 		out = append(out, s)
+	}
+	return out, rows.Err()
+}
+
+// StatsByLanguage returns watched time per stored audio-language code, skipping
+// media with no language. Codes are raw (e.g. "en-US", "es-419"); callers
+// collapse regional variants for display.
+func (r *SQLiteRepo) StatsByLanguage(ctx context.Context, from, to *time.Time) ([]LanguageStat, error) {
+	conds := []string{"s.deleted_at IS NULL", "m.language IS NOT NULL", "m.language <> ''"}
+	var args []any
+	whereTimeRange(&conds, &args, "s.started_at", from, to)
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT m.language, COALESCE(SUM(s.watched_seconds),0)
+		   FROM watch_session s
+		   JOIN media_item m ON m.id = s.media_item_id
+		  WHERE `+strings.Join(conds, " AND ")+`
+		  GROUP BY m.language`, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []LanguageStat
+	for rows.Next() {
+		var ls LanguageStat
+		if err := rows.Scan(&ls.Language, &ls.WatchedSeconds); err != nil {
+			return nil, err
+		}
+		out = append(out, ls)
 	}
 	return out, rows.Err()
 }

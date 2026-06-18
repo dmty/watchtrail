@@ -13,9 +13,6 @@
   <div class="meta">
     <div class="tags">
       <span class="badge">{{sourceBadge .SourceKind}}</span>
-      {{if .LanguageCode}}
-      <span class="chip"{{if .LanguageLabel}} title="{{.LanguageLabel}}"{{end}}><span class="dot" aria-hidden="true"></span>{{.LanguageCode}}{{if .LanguageLabel}}<span class="chip-name"> · {{.LanguageLabel}}</span>{{end}}</span>
-      {{end}}
     </div>
     <h1>{{.Title}} <small>{{.Kind}}</small></h1>
     {{if .Link}}

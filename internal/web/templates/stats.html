@@ -9,13 +9,17 @@
 </div>
 <h2 class="chart-h">watch time · by day</h2>
 <canvas id="overTime" height="120"></canvas>
-<h2 class="chart-h">by source</h2>
-<canvas id="bySource" height="120"></canvas>
+<div class="donuts">
+  <div><h2 class="chart-h">by source</h2><canvas id="bySource" height="150"></canvas></div>
+  <div><h2 class="chart-h">by language</h2><canvas id="byLang" height="150"></canvas></div>
+</div>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script>
 // Theme Chart.js to the screening-log palette (amber on warm-dark).
 const AMBER = '#e6a23c', INK = '#8c8270', LINE = 'rgba(236,227,212,.09)';
 const SRC = ['#e6a23c','#c2703a','#9d8f6e','#6f5a3c','#d4b483'];
+// A longer warm palette for the language donut (more, varied slices).
+const LANGS = ['#e6a23c','#c2703a','#7fa07a','#d4b483','#9d8f6e','#b5544a','#6f8fa3','#caa05a','#8a6d9c','#6f5a3c','#bf8a5e','#577a6e'];
 Chart.defaults.color = INK;
 Chart.defaults.font.family = "'Plex', ui-monospace, monospace";
 Chart.defaults.font.size = 11;
@@ -39,6 +43,20 @@ async function draw() {
               backgroundColor: SRC, borderColor: '#15110d', borderWidth: 2 }] },
     options: { cutout: '62%', plugins: { legend: { position: 'right' } } }
   });
+  const bl = await (await fetch('/api/v1/stats/by-language')).json();
+  const langs = bl.by_language || [];
+  const lc = document.getElementById('byLang');
+  if (!langs.length) {
+    lc.outerHTML = '<p class="empty">no language data yet</p>';
+  } else {
+    new Chart(lc, {
+      type: 'doughnut',
+      data: { labels: langs.map(l => l.language),
+              datasets: [{ data: langs.map(l => l.watched_seconds),
+                backgroundColor: LANGS, borderColor: '#15110d', borderWidth: 2 }] },
+      options: { cutout: '62%', plugins: { legend: { position: 'right' } } }
+    });
+  }
 }
 draw().catch(() => {
   document.getElementById('overTime').outerHTML = '<p class="empty">couldn\'t load chart</p>';

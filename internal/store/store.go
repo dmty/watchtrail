@@ -80,6 +80,7 @@ type Repository interface {
 	MediaSearch(ctx context.Context, q, source, kind string) ([]MediaItemSummary, error)
 	StatsSummary(ctx context.Context, from, to *time.Time) (Summary, error)
 	StatsBySource(ctx context.Context, from, to *time.Time) ([]SourceStat, error)
+	StatsByLanguage(ctx context.Context, from, to *time.Time) ([]LanguageStat, error)
 	StatsOverTime(ctx context.Context, bucket string, from, to *time.Time) ([]Bucket, error)
 	CountSessions(ctx context.Context) (int, error)
 	CountMedia(ctx context.Context) (int, error)

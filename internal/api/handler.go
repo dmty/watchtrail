@@ -5,7 +5,9 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"sort"
 
+	"watchtrail/internal/lang"
 	"watchtrail/internal/store"
 )
 
@@ -18,6 +20,7 @@ func Handler(repo store.Repository) http.Handler {
 	mux.HandleFunc("GET /api/v1/media", handleMediaSearch(repo))
 	mux.HandleFunc("GET /api/v1/stats/summary", handleStatsSummary(repo))
 	mux.HandleFunc("GET /api/v1/stats/by-source", handleStatsBySource(repo))
+	mux.HandleFunc("GET /api/v1/stats/by-language", handleStatsByLanguage(repo))
 	mux.HandleFunc("GET /api/v1/stats/over-time", handleStatsOverTime(repo))
 	mux.HandleFunc("GET /api/v1/health", handleHealth(repo))
 	return mux
@@ -189,6 +192,46 @@ func handleStatsBySource(repo store.Repository) http.HandlerFunc {
 			})
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"by_source": out})
+	}
+}
+
+type langStatDTO struct {
+	Language       string `json:"language"` // display name, e.g. "Spanish"
+	Code           string `json:"code"`     // primary subtag, e.g. "es"
+	WatchedSeconds int    `json:"watched_seconds"`
+}
+
+// handleStatsByLanguage collapses the per-code watched-time rows to a primary
+// language (en-US + en -> English) and returns them sorted by watched time.
+func handleStatsByLanguage(repo store.Repository) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		from, to, err := timeRange(r.URL.Query())
+		if err != nil {
+			writeErr(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		stats, err := repo.StatsByLanguage(r.Context(), from, to)
+		if err != nil {
+			serverErr(w, err)
+			return
+		}
+		byCode := make(map[string]int)
+		for _, s := range stats {
+			if code := lang.Primary(s.Language); code != "" {
+				byCode[code] += s.WatchedSeconds
+			}
+		}
+		out := make([]langStatDTO, 0, len(byCode))
+		for code, secs := range byCode {
+			out = append(out, langStatDTO{Language: lang.DisplayName(code), Code: code, WatchedSeconds: secs})
+		}
+		sort.Slice(out, func(i, j int) bool {
+			if out[i].WatchedSeconds != out[j].WatchedSeconds {
+				return out[i].WatchedSeconds > out[j].WatchedSeconds
+			}
+			return out[i].Code < out[j].Code
+		})
+		writeJSON(w, http.StatusOK, map[string]any{"by_language": out})
 	}
 }
 

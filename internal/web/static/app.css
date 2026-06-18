@@ -58,6 +58,7 @@ button:hover{border-color:var(--amber); color:var(--amber)}
 /* item totals */
 .totals{color:var(--muted); margin:.2rem 0 1.6rem; font-size:.95rem}
 .totals b{color:var(--ink); font-weight:600}
+.totals .lang-lead{color:var(--amber); font-weight:600}
 /* stats stat-block */
 .cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(8rem,1fr)); border-top:1px solid var(--line); margin:0 0 2.4rem}
 .card{padding:1.4rem 1.2rem; border-bottom:1px solid var(--line); border-right:1px solid var(--line)}
@@ -65,6 +66,9 @@ button:hover{border-color:var(--amber); color:var(--amber)}
 .card label{display:block; margin-top:.5rem; font-size:.64rem; text-transform:uppercase; letter-spacing:.16em; color:var(--muted)}
 .chart-h{font-family:"Plex",monospace; font-weight:600; font-size:.68rem; text-transform:uppercase; letter-spacing:.16em; color:var(--muted); margin:2rem 0 .2rem}
 canvas{margin:.4rem 0 1.2rem; max-width:100%}
+.donuts{display:grid; grid-template-columns:1fr 1fr; gap:1.6rem}
+.donuts .chart-h{margin-top:1.4rem}
+@media(max-width:46rem){.donuts{grid-template-columns:1fr}}
 /* empty / search results */
 .empty,#results p{color:var(--muted); font-style:italic}
 #results div{padding:.6rem 0; border-bottom:1px solid var(--line)}

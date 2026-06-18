@@ -1,6 +1,6 @@
 {{define "item_detail"}}
 <div id="item-detail">
-<p class="totals">started {{.Starts}}×, finished {{.Completions}}×, <b>{{watchedFmt .WatchedSeconds}}</b> watched total</p>
+<p class="totals">{{if .LanguageDisplay}}<b class="lang-lead">{{.LanguageDisplay}}</b> · {{end}}started {{.Starts}}×, finished {{.Completions}}×, <b>{{watchedFmt .WatchedSeconds}}</b> watched total</p>
 <table>
   <thead><tr><th>When</th><th>Watched</th><th>Done</th></tr></thead>
   <tbody>

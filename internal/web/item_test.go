@@ -51,9 +51,9 @@ func TestItemYouTubeCard(t *testing.T) {
 	if !strings.Contains(body, "https://i.ytimg.com/vi/abc123_-/hqdefault.jpg") {
 		t.Fatalf("missing thumbnail: %q", body)
 	}
-	// Language chip: code + human label.
-	if !strings.Contains(body, "ES-419") || !strings.Contains(body, "Spanish (Latin America)") {
-		t.Fatalf("missing language chip: %q", body)
+	// Language shown as a normalized name (es-419 -> Spanish), led on the totals line.
+	if !strings.Contains(body, `class="lang-lead">Spanish<`) {
+		t.Fatalf("missing language lead on totals line: %q", body)
 	}
 	if !strings.Contains(body, "Watch on YouTube") {
 		t.Fatalf("missing watch label: %q", body)

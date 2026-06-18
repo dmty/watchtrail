@@ -218,6 +218,58 @@ func TestStatsBySourceEndpoint(t *testing.T) {
 	}
 }
 
+func TestStatsByLanguageEndpoint(t *testing.T) {
+	base := time.Date(2026, 6, 18, 12, 0, 0, 0, time.UTC)
+	srv := newAPI(t, func(r *store.SQLiteRepo) {
+		ctx := context.Background()
+		seed := func(ext, langCode string, watched int) {
+			id, err := r.FindOrCreateMediaItem(ctx, store.MediaItem{
+				SourceKind: "youtube", ExternalID: ext, IdentityKey: "youtube:" + ext,
+				Kind: "video", Title: ext, Language: langCode,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := r.UpsertSession(ctx, store.Session{
+				ID: "s-" + ext, MediaItemID: id, SourceKind: "youtube", SourceInstance: "i1",
+				StartedAt: base, EndedAt: base.Add(time.Duration(watched) * time.Second),
+				WatchedSeconds: watched, MaxPositionSeconds: float64(watched),
+				EventCount: 2, CreatedAt: base, UpdatedAt: base,
+			}); err != nil {
+				t.Fatal(err)
+			}
+		}
+		seed("a", "es-419", 100)
+		seed("b", "es-US", 50) // collapses with es-419 into "Spanish"
+		seed("c", "en", 40)
+		seed("d", "", 10) // no language -> excluded
+	})
+	resp, err := http.Get(srv.URL + "/api/v1/stats/by-language")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		t.Fatalf("status %d", resp.StatusCode)
+	}
+	var body struct {
+		ByLanguage []langStatDTO `json:"by_language"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatal(err)
+	}
+	if len(body.ByLanguage) != 2 {
+		t.Fatalf("want 2 languages (Spanish, English), got %+v", body.ByLanguage)
+	}
+	top := body.ByLanguage[0]
+	if top.Code != "es" || top.Language != "Spanish" || top.WatchedSeconds != 150 {
+		t.Fatalf("top = %+v, want Spanish/es/150", top)
+	}
+	if body.ByLanguage[1].Code != "en" || body.ByLanguage[1].WatchedSeconds != 40 {
+		t.Fatalf("second = %+v, want en/40", body.ByLanguage[1])
+	}
+}
+
 func TestStatsSummaryBadTimeParam(t *testing.T) {
 	srv := newAPI(t, nil)
 	resp, err := http.Get(srv.URL + "/api/v1/stats/summary?to=garbage")

@@ -30,6 +30,19 @@ var englishName = map[string]string{
 	"danish": "da", "finnish": "fi", "norwegian": "no", "hungarian": "hu",
 }
 
+// nameByCode maps an ISO 639-1 primary subtag to its English display name. Used
+// for human-facing labels (item page, stats donut). Unknown codes fall back to
+// the upper-cased code.
+var nameByCode = map[string]string{
+	"en": "English", "ja": "Japanese", "es": "Spanish", "fr": "French",
+	"de": "German", "it": "Italian", "pt": "Portuguese", "ru": "Russian",
+	"zh": "Chinese", "ko": "Korean", "ar": "Arabic", "hi": "Hindi",
+	"nl": "Dutch", "pl": "Polish", "sv": "Swedish", "tr": "Turkish",
+	"vi": "Vietnamese", "th": "Thai", "id": "Indonesian", "uk": "Ukrainian",
+	"cs": "Czech", "ro": "Romanian", "el": "Greek", "he": "Hebrew",
+	"da": "Danish", "fi": "Finnish", "no": "Norwegian", "hu": "Hungarian",
+}
+
 // Normalize returns a lower-cased BCP-47 primary subtag for value, preserving any
 // region subtag. value may be an ISO 639-2/639-1 code or a full English language
 // name. Empty, whitespace, "und", and "undetermined" return "".
@@ -49,4 +62,30 @@ func Normalize(value string) string {
 		return primary + "-" + rest
 	}
 	return primary
+}
+
+// Primary returns just the base language subtag, dropping any region/script
+// (e.g. "en-US" -> "en", "zh-Hans" -> "zh"). Used to bucket regional variants
+// together. Empty/undetermined values return "".
+func Primary(value string) string {
+	n := Normalize(value)
+	if n == "" {
+		return ""
+	}
+	primary, _, _ := strings.Cut(n, "-")
+	return primary
+}
+
+// DisplayName returns the English display name for value's primary language
+// (e.g. "es-419" -> "Spanish"), falling back to the upper-cased code for
+// languages not in the table. Empty/undetermined values return "".
+func DisplayName(value string) string {
+	p := Primary(value)
+	if p == "" {
+		return ""
+	}
+	if name, ok := nameByCode[p]; ok {
+		return name
+	}
+	return strings.ToUpper(p)
 }
