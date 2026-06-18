@@ -34,6 +34,10 @@ func LocalPath(urlOrPath string) (string, bool) {
 		if err != nil || u.Path == "" {
 			return "", false
 		}
+		// RFC 8089: non-empty host must be localhost; empty or "localhost" is OK
+		if u.Host != "" && u.Host != "localhost" {
+			return "", false
+		}
 		return u.Path, true // url.Parse percent-decodes into u.Path
 	case strings.HasPrefix(urlOrPath, "/"):
 		return urlOrPath, true

@@ -11,6 +11,8 @@ func TestLocalPath(t *testing.T) {
 	}{
 		{"file:///Users/me/Movies/The%20Film.mkv", "/Users/me/Movies/The Film.mkv", true},
 		{"file:///tmp/a.mp4", "/tmp/a.mp4", true},
+		{"file://localhost/tmp/a.mp4", "/tmp/a.mp4", true},
+		{"file://nas/share/a.mp4", "", false},
 		{"/tmp/bare.mp4", "/tmp/bare.mp4", true},
 		{"url:abc", "", false},
 		{"https://youtu.be/x", "", false},
