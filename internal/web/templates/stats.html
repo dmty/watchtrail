@@ -32,18 +32,24 @@
 // Theme Chart.js to the screening-log palette (amber on warm-dark).
 const AMBER = '#e6a23c', INK = '#8c8270', LINE = 'rgba(236,227,212,.09)';
 const SRC = ['#e6a23c','#c2703a','#9d8f6e','#6f5a3c','#d4b483'];
-// A longer warm palette for the language donut (more, varied slices).
 const LANGS = ['#e6a23c','#c2703a','#7fa07a','#d4b483','#9d8f6e','#b5544a','#6f8fa3','#caa05a','#8a6d9c','#6f5a3c','#bf8a5e','#577a6e'];
 Chart.defaults.color = INK;
 Chart.defaults.font.family = "'Plex', ui-monospace, monospace";
 Chart.defaults.font.size = 11;
 Chart.defaults.borderColor = LINE;
-// Render watched seconds as human time (e.g. 5383 -> "1h 30m"), matching the cards.
+
+// fmtSecs: chart tooltips/axes — "1h 30m". fmtWatched: cards — mirrors watchedFmt (m:ss / h:mm:ss).
 function fmtSecs(s) {
   s = Math.round(s);
   const h = Math.floor(s / 3600), m = Math.round((s % 3600) / 60);
   if (h > 0) return m > 0 ? `${h}h ${m}m` : `${h}h`;
   return m > 0 ? `${m}m` : `${s}s`;
+}
+function fmtWatched(secs) {
+  secs = Math.round(secs);
+  const h = Math.floor(secs / 3600), m = Math.floor((secs % 3600) / 60), s = secs % 60;
+  const p = (n) => String(n).padStart(2, '0');
+  return h > 0 ? `${h}:${p(m)}:${p(s)}` : `${m}:${p(s)}`;
 }
 const donutOpts = {
   cutout: '62%',
@@ -52,43 +58,120 @@ const donutOpts = {
     tooltip: { callbacks: { label: (ctx) => ` ${ctx.label}: ${fmtSecs(ctx.parsed)}` } },
   },
 };
-async function draw() {
-  const ot = await (await fetch('/api/v1/stats/over-time?bucket=day')).json();
-  new Chart(document.getElementById('overTime'), {
+
+// ---- range presets: each window() returns [from, to) as Dates (or nulls) ----
+function startOfDay(d) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+const RANGES = [
+  { key: 'today', label: 'today', window() {
+      const a = startOfDay(new Date());
+      const b = new Date(a); b.setDate(b.getDate() + 1);
+      return [a, b];
+  }},
+  { key: 'week', label: 'this week', window() {
+      const now = startOfDay(new Date());
+      const dow = (now.getDay() + 6) % 7;        // Mon=0 … Sun=6
+      const a = new Date(now); a.setDate(a.getDate() - dow);
+      const b = new Date(a); b.setDate(b.getDate() + 7);
+      return [a, b];
+  }},
+  { key: 'month', label: 'this month', window() {
+      const n = new Date();
+      return [new Date(n.getFullYear(), n.getMonth(), 1),
+              new Date(n.getFullYear(), n.getMonth() + 1, 1)];
+  }},
+  { key: 'total', label: 'all time', window() { return [null, null]; } },
+];
+let rangeIdx = RANGES.length - 1;                // default: all time
+
+function rangeQuery(range) {
+  const [a, b] = range.window();
+  const p = new URLSearchParams();
+  if (a) p.set('from', a.toISOString());
+  if (b) p.set('to', b.toISOString());
+  const s = p.toString();
+  return s ? '?' + s : '';
+}
+
+let overTime, bySource, byLang;
+let gen = 0;                                     // guards against stale paints
+
+function setDonut(chart, labels, data) {
+  chart.data.labels = labels;
+  chart.data.datasets[0].data = data;
+  chart.update();
+}
+function toggleEmpty(canvasId, n) {
+  document.getElementById(canvasId + 'Empty').hidden = n > 0;
+  document.getElementById(canvasId).style.display = n > 0 ? '' : 'none';
+}
+
+async function render() {
+  const range = RANGES[rangeIdx];
+  document.getElementById('rangeLabel').textContent = range.label;
+  const my = ++gen;
+  const q = rangeQuery(range);
+  const otURL = '/api/v1/stats/over-time' + (q ? q + '&' : '?') + 'bucket=day';
+
+  const [sum, ot, bs, bl] = await Promise.all([
+    fetch('/api/v1/stats/summary' + q).then(r => r.json()),
+    fetch(otURL).then(r => r.json()),
+    fetch('/api/v1/stats/by-source' + q).then(r => r.json()),
+    fetch('/api/v1/stats/by-language' + q).then(r => r.json()),
+  ]);
+  if (my !== gen) return;                        // a newer render() superseded this one
+
+  document.getElementById('cWatched').textContent = fmtWatched(sum.watched_seconds || 0);
+  document.getElementById('cItems').textContent = sum.distinct_items || 0;
+  document.getElementById('cSessions').textContent = sum.sessions || 0;
+  document.getElementById('cDone').textContent = Math.round((sum.completion_rate || 0) * 100) + '%';
+
+  const buckets = ot.buckets || [];
+  overTime.data.labels = buckets.map(b => b.date);
+  overTime.data.datasets[0].data = buckets.map(b => b.watched_seconds);
+  overTime.update();
+
+  const srcs = bs.by_source || [];
+  setDonut(bySource, srcs.map(s => s.source), srcs.map(s => s.watched_seconds));
+  toggleEmpty('bySource', srcs.length);
+
+  const langs = bl.by_language || [];
+  setDonut(byLang, langs.map(l => l.language), langs.map(l => l.watched_seconds));
+  toggleEmpty('byLang', langs.length);
+}
+
+function initCharts() {
+  overTime = new Chart(document.getElementById('overTime'), {
     type: 'line',
-    data: { labels: (ot.buckets||[]).map(b => b.date),
-            datasets: [{ label: 'watched (s)', data: (ot.buckets||[]).map(b => b.watched_seconds),
-              borderColor: AMBER, backgroundColor: 'rgba(230,162,60,.12)', fill: true,
-              tension: .3, pointRadius: 2, pointBackgroundColor: AMBER }] },
+    data: { labels: [], datasets: [{ label: 'watched (s)', data: [],
+      borderColor: AMBER, backgroundColor: 'rgba(230,162,60,.12)', fill: true,
+      tension: .3, pointRadius: 2, pointBackgroundColor: AMBER }] },
     options: { plugins: { legend: { display: false },
                  tooltip: { callbacks: { label: (ctx) => ' ' + fmtSecs(ctx.parsed.y) } } },
                scales: { x: { grid: { color: LINE } },
                  y: { grid: { color: LINE }, beginAtZero: true, ticks: { callback: (v) => fmtSecs(v) } } } }
   });
-  const bs = await (await fetch('/api/v1/stats/by-source')).json();
-  new Chart(document.getElementById('bySource'), {
+  bySource = new Chart(document.getElementById('bySource'), {
     type: 'doughnut',
-    data: { labels: (bs.by_source||[]).map(s => s.source),
-            datasets: [{ data: (bs.by_source||[]).map(s => s.watched_seconds),
-              backgroundColor: SRC, borderColor: '#15110d', borderWidth: 2 }] },
+    data: { labels: [], datasets: [{ data: [], backgroundColor: SRC, borderColor: '#15110d', borderWidth: 2 }] },
     options: donutOpts
   });
-  const bl = await (await fetch('/api/v1/stats/by-language')).json();
-  const langs = bl.by_language || [];
-  const lc = document.getElementById('byLang');
-  if (!langs.length) {
-    lc.outerHTML = '<p class="empty">no language data yet</p>';
-  } else {
-    new Chart(lc, {
-      type: 'doughnut',
-      data: { labels: langs.map(l => l.language),
-              datasets: [{ data: langs.map(l => l.watched_seconds),
-                backgroundColor: LANGS, borderColor: '#15110d', borderWidth: 2 }] },
-      options: donutOpts
-    });
-  }
+  byLang = new Chart(document.getElementById('byLang'), {
+    type: 'doughnut',
+    data: { labels: [], datasets: [{ data: [], backgroundColor: LANGS, borderColor: '#15110d', borderWidth: 2 }] },
+    options: donutOpts
+  });
 }
-draw().catch(() => {
+
+document.querySelectorAll('.range .arrow').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const step = parseInt(btn.dataset.step, 10);
+    rangeIdx = (rangeIdx + step + RANGES.length) % RANGES.length;
+    render().catch(() => {});
+  });
+});
+
+initCharts();
+render().catch(() => {
   document.getElementById('overTime').outerHTML = '<p class="empty">couldn\'t load chart</p>';
 });
 </script>
