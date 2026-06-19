@@ -154,6 +154,9 @@ func TestStatsOverTimeBadBucket(t *testing.T) {
 }
 
 func TestStatsOverTimeDefaultsToDay(t *testing.T) {
+	orig := time.Local
+	time.Local = time.UTC
+	t.Cleanup(func() { time.Local = orig })
 	base := time.Date(2026, 6, 15, 12, 0, 0, 0, time.UTC)
 	srv := newAPI(t, func(r *store.SQLiteRepo) {
 		seedAPISession(t, r, "s1", "m1", "A", "vlc", base, 100, true)
@@ -279,5 +282,30 @@ func TestStatsSummaryBadTimeParam(t *testing.T) {
 	defer resp.Body.Close()
 	if resp.StatusCode != 400 {
 		t.Fatalf("status %d want 400", resp.StatusCode)
+	}
+}
+
+func TestStatsOverTimeHourBucket(t *testing.T) {
+	orig := time.Local
+	time.Local = time.UTC
+	t.Cleanup(func() { time.Local = orig })
+	base := time.Date(2026, 6, 15, 12, 0, 0, 0, time.UTC)
+	srv := newAPI(t, func(r *store.SQLiteRepo) {
+		seedAPISession(t, r, "s1", "m1", "A", "vlc", base, 100, true)
+	})
+	resp, err := http.Get(srv.URL + "/api/v1/stats/over-time?bucket=hour")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		t.Fatalf("status %d", resp.StatusCode)
+	}
+	var body struct {
+		Buckets []bucketDTO `json:"buckets"`
+	}
+	json.NewDecoder(resp.Body).Decode(&body)
+	if len(body.Buckets) != 1 || body.Buckets[0].Date != "2026-06-15T12" {
+		t.Fatalf("buckets = %+v", body.Buckets)
 	}
 }

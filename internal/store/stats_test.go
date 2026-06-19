@@ -6,6 +6,14 @@ import (
 	"time"
 )
 
+// pinTZ fixes time.Local for the test so localtime bucketing is deterministic
+// regardless of the host timezone. Restored on cleanup. Do not use with t.Parallel.
+func pinTZ(t *testing.T, offsetHours int) {
+	orig := time.Local
+	time.Local = time.FixedZone("test", offsetHours*3600)
+	t.Cleanup(func() { time.Local = orig })
+}
+
 func TestStatsSummaryAndBySource(t *testing.T) {
 	r := openTemp(t)
 	ctx := context.Background()
@@ -35,6 +43,7 @@ func TestStatsSummaryAndBySource(t *testing.T) {
 }
 
 func TestStatsOverTimeDayBuckets(t *testing.T) {
+	pinTZ(t, 0) // UTC: keep the UTC-date assertions deterministic under localtime
 	r := openTemp(t)
 	ctx := context.Background()
 	day1 := time.Date(2026, 6, 15, 10, 0, 0, 0, time.UTC)
@@ -62,5 +71,30 @@ func TestStatsOverTimeRejectsUnknownBucket(t *testing.T) {
 	r := openTemp(t)
 	if _, err := r.StatsOverTime(context.Background(), "week", nil, nil); err == nil {
 		t.Fatal("expected error for unsupported bucket")
+	}
+}
+
+func TestStatsOverTimeHourBuckets(t *testing.T) {
+	pinTZ(t, 12) // UTC+12: localtime shifts both the hour and the calendar day
+	r := openTemp(t)
+	ctx := context.Background()
+	// 20:00Z & 20:30Z -> local 2026-06-16 08:xx ; 21:00Z -> local 09:xx
+	seedSession(t, r, "s1", "m1", "A", "vlc", time.Date(2026, 6, 15, 20, 0, 0, 0, time.UTC), 100, true)
+	seedSession(t, r, "s2", "m2", "B", "vlc", time.Date(2026, 6, 15, 20, 30, 0, 0, time.UTC), 50, false)
+	seedSession(t, r, "s3", "m1", "A", "vlc", time.Date(2026, 6, 15, 21, 0, 0, 0, time.UTC), 25, false)
+
+	buckets, err := r.StatsOverTime(ctx, "hour", nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(buckets) != 2 {
+		t.Fatalf("buckets = %+v", buckets)
+	}
+	// localtime (+12) moved 20:00Z to 08:00 the next local day — proves localization
+	if buckets[0].Date != "2026-06-16T08" || buckets[0].WatchedSeconds != 150 || buckets[0].Sessions != 2 {
+		t.Fatalf("hour bucket 0 = %+v", buckets[0])
+	}
+	if buckets[1].Date != "2026-06-16T09" || buckets[1].WatchedSeconds != 25 {
+		t.Fatalf("hour bucket 1 = %+v", buckets[1])
 	}
 }

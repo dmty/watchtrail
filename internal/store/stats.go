@@ -119,20 +119,27 @@ func (r *SQLiteRepo) StatsByLanguage(ctx context.Context, from, to *time.Time) (
 	return out, rows.Err()
 }
 
-// StatsOverTime buckets watch activity by day. Only bucket=="day" is supported in M2.
+// StatsOverTime buckets watch activity by local-time day or hour. started_at is
+// stored UTC; datetime(...,'localtime') localizes via Go's time.Local.
 func (r *SQLiteRepo) StatsOverTime(ctx context.Context, bucket string, from, to *time.Time) ([]Bucket, error) {
-	if bucket != "day" {
+	var format string
+	switch bucket {
+	case "day":
+		format = "%Y-%m-%d"
+	case "hour":
+		format = "%Y-%m-%dT%H"
+	default:
 		return nil, errors.New("unsupported bucket: " + bucket)
 	}
 	conds := []string{"deleted_at IS NULL"}
 	var args []any
 	whereTimeRange(&conds, &args, "started_at", from, to)
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT substr(started_at,1,10) AS day, COALESCE(SUM(watched_seconds),0), COUNT(1)
+		`SELECT strftime('`+format+`', datetime(started_at,'localtime')) AS bucket, COALESCE(SUM(watched_seconds),0), COUNT(1)
 		   FROM watch_session
 		  WHERE `+strings.Join(conds, " AND ")+`
-		  GROUP BY day
-		  ORDER BY day`, args...)
+		  GROUP BY bucket
+		  ORDER BY bucket`, args...)
 	if err != nil {
 		return nil, err
 	}
