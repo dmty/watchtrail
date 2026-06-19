@@ -34,7 +34,7 @@ type LanguageStat struct {
 
 // Bucket is one time bucket of watch activity.
 type Bucket struct {
-	Date           string // YYYY-MM-DD (UTC)
+	Date           string // bucket key: local-time YYYY-MM-DD (day) or YYYY-MM-DDTHH (hour)
 	WatchedSeconds int
 	Sessions       int
 }
