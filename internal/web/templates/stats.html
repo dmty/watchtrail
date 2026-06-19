@@ -15,6 +15,7 @@
 </div>
 <h2 class="chart-h">watch time · by day</h2>
 <canvas id="overTime" height="120"></canvas>
+<p class="empty" id="overTimeError" hidden>couldn't load chart</p>
 <div class="donuts">
   <div>
     <h2 class="chart-h">by source</h2>
@@ -129,6 +130,7 @@ async function render() {
   overTime.data.labels = buckets.map(b => b.date);
   overTime.data.datasets[0].data = buckets.map(b => b.watched_seconds);
   overTime.update();
+  document.getElementById('overTimeError').hidden = true;
 
   const srcs = bs.by_source || [];
   setDonut(bySource, srcs.map(s => s.source), srcs.map(s => s.watched_seconds));
@@ -172,7 +174,7 @@ document.querySelectorAll('.range .arrow').forEach((btn) => {
 
 initCharts();
 render().catch(() => {
-  document.getElementById('overTime').outerHTML = '<p class="empty">couldn\'t load chart</p>';
+  document.getElementById('overTimeError').hidden = false;
 });
 </script>
 {{end}}
