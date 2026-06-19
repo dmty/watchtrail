@@ -111,7 +111,8 @@ async function render() {
   document.getElementById('rangeLabel').textContent = range.label;
   const my = ++gen;
   const q = rangeQuery(range);
-  const otURL = '/api/v1/stats/over-time' + (q ? q + '&' : '?') + 'bucket=day';
+  const bucket = range.key === 'today' ? 'hour' : 'day';
+  const otURL = '/api/v1/stats/over-time' + (q ? q + '&' : '?') + 'bucket=' + bucket;
 
   const [sum, ot, bs, bl] = await Promise.all([
     fetch('/api/v1/stats/summary' + q).then(r => r.json()),
@@ -127,7 +128,7 @@ async function render() {
   document.getElementById('cDone').textContent = Math.round((sum.completion_rate || 0) * 100) + '%';
 
   const buckets = ot.buckets || [];
-  overTime.data.labels = buckets.map(b => b.date);
+  overTime.data.labels = buckets.map(b => bucket === 'hour' ? b.date.slice(11, 13) + ':00' : b.date);
   overTime.data.datasets[0].data = buckets.map(b => b.watched_seconds);
   overTime.update();
   document.getElementById('overTimeError').hidden = true;
