@@ -51,7 +51,7 @@ func TestStatsPageRangeWidget(t *testing.T) {
 		`class="range"`, `id="rangeLabel"`,
 		`data-step="-1"`, `data-step="1"`,
 		`id="cWatched"`, `id="cItems"`, `id="cSessions"`, `id="cDone"`,
-		`id="bySourceEmpty"`, `id="byLangEmpty"`,
+		`id="bySourceEmpty" hidden`, `id="byLangEmpty" hidden`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("missing %q in stats page: %q", want, body)
