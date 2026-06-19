@@ -1,17 +1,31 @@
 {{define "title"}}Stats — WatchTrail{{end}}
 {{define "content"}}
-<h1>Stats <small>all time</small></h1>
+<h1>Stats
+  <small class="range">
+    <button type="button" class="arrow" data-step="-1" aria-label="previous range">‹</button>
+    <span id="rangeLabel">all time</span>
+    <button type="button" class="arrow" data-step="1" aria-label="next range">›</button>
+  </small>
+</h1>
 <div class="cards">
-  <div class="card"><span>{{watchedFmt .WatchedSeconds}}</span><label>watched</label></div>
-  <div class="card"><span>{{.DistinctItems}}</span><label>items</label></div>
-  <div class="card"><span>{{.Sessions}}</span><label>sessions</label></div>
-  <div class="card"><span>{{printf "%.0f%%" .CompletionPct}}</span><label>completed</label></div>
+  <div class="card"><span id="cWatched">{{watchedFmt .WatchedSeconds}}</span><label>watched</label></div>
+  <div class="card"><span id="cItems">{{.DistinctItems}}</span><label>items</label></div>
+  <div class="card"><span id="cSessions">{{.Sessions}}</span><label>sessions</label></div>
+  <div class="card"><span id="cDone">{{printf "%.0f%%" .CompletionPct}}</span><label>completed</label></div>
 </div>
 <h2 class="chart-h">watch time · by day</h2>
 <canvas id="overTime" height="120"></canvas>
 <div class="donuts">
-  <div><h2 class="chart-h">by source</h2><canvas id="bySource" height="150"></canvas></div>
-  <div><h2 class="chart-h">by language</h2><canvas id="byLang" height="150"></canvas></div>
+  <div>
+    <h2 class="chart-h">by source</h2>
+    <canvas id="bySource" height="150"></canvas>
+    <p class="empty" id="bySourceEmpty" hidden>no data in range</p>
+  </div>
+  <div>
+    <h2 class="chart-h">by language</h2>
+    <canvas id="byLang" height="150"></canvas>
+    <p class="empty" id="byLangEmpty" hidden>no language data yet</p>
+  </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script>
