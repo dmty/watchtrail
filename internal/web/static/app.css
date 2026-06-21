@@ -125,3 +125,15 @@ canvas{margin:.4rem 0 1.2rem; max-width:100%}
 .watch .arr{font-size:.95em}
 
 @media(max-width:46rem){.media-card{grid-template-columns:1fr; align-items:start}}
+
+.media-card .delete { margin-top: .75rem; }
+.media-card .delete button {
+  font: inherit;
+  color: #b3261e;
+  background: transparent;
+  border: 1px solid currentColor;
+  border-radius: 6px;
+  padding: .35rem .8rem;
+  cursor: pointer;
+}
+.media-card .delete button:hover { background: #b3261e; color: #fff; }

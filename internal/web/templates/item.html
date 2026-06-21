@@ -19,6 +19,11 @@
     {{if .Link}}
     <a class="watch" href="{{.Link}}" target="_blank" rel="noopener noreferrer">{{.LinkLabel}} <span class="arr" aria-hidden="true">↗</span></a>
     {{end}}
+    <form class="delete" method="post" action="/item/{{.ID}}/delete"
+          hx-post="/item/{{.ID}}/delete"
+          hx-confirm="Delete this item and all its watch history?">
+      <button type="submit">Delete</button>
+    </form>
   </div>
 </article>
 

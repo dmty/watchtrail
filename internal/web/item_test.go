@@ -130,3 +130,17 @@ func TestItemFragmentHasNoLiveScript(t *testing.T) {
 		t.Fatalf("item fragment must not re-include the EventSource script: %q", body)
 	}
 }
+
+func TestItemPageHasDeleteForm(t *testing.T) {
+	base := time.Date(2026, 6, 18, 12, 0, 0, 0, time.UTC)
+	srv := newWebServer(t, func(r *store.SQLiteRepo) {
+		seedWebSession(t, r, "s1", "mX", "The Film", "vlc", base, 100, true)
+	})
+	_, body := bodyOf(t, srv.URL+"/item/mX", false)
+	if !strings.Contains(body, `action="/item/mX/delete"`) {
+		t.Fatalf("missing delete form action: %q", body)
+	}
+	if !strings.Contains(body, "hx-confirm=") {
+		t.Fatalf("delete form should confirm before posting: %q", body)
+	}
+}
