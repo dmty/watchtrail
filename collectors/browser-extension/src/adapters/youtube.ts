@@ -12,20 +12,26 @@ function selectedAudioFromDom(): SelectedAudio {
   return out;
 }
 
+// Prefer the channel the probe read from the player API (data-wt-video-author):
+// it names the actually-playing video's channel, which the page DOM gets wrong in
+// the miniplayer. Fall back to the watch-page DOM.
 function channelMeta(): Record<string, unknown> | undefined {
+  const fromPlayer = document.documentElement.dataset.wtVideoAuthor?.trim();
   const el = document.querySelector(
     "ytd-channel-name a, #channel-name a, #owner #channel-name a",
   );
-  const channel = el?.textContent?.trim();
+  const channel = fromPlayer || el?.textContent?.trim();
   return channel ? { channel } : undefined;
 }
 
-// document.title is unreliable at playback start: YouTube's SPA leaves it as the
-// bare "YouTube" (optionally prefixed with an unread count like "(3) ") for a
-// moment before swapping in the real title. Prefer the player's metadata <h1>,
-// which is populated earlier, and never report the "YouTube" placeholder so the
-// core stores no title rather than a wrong one (a later event fills it in).
+// Prefer the title the probe read from the player API (data-wt-video-title): it
+// names the actually-playing video, so it stays correct in the miniplayer where
+// the page DOM shows a different watch page. Fall back to the watch-page <h1>,
+// then document.title — never reporting the bare "YouTube" placeholder (a
+// transient SPA value), so the core stores no title rather than a wrong one.
 function videoTitle(): string | undefined {
+  const fromPlayer = document.documentElement.dataset.wtVideoTitle?.trim();
+  if (fromPlayer) return fromPlayer;
   const el = document.querySelector(
     "h1.ytd-watch-metadata, #title h1 yt-formatted-string, h1.title yt-formatted-string",
   );
