@@ -120,6 +120,14 @@ async function main(): Promise<void> {
     if (v) emit("hide", v);
   }
 
+  // Emit a synthetic "play" for the currently-playing element when no native
+  // "play" reaches us — the tab regained focus, or YouTube swapped the playing
+  // video id without a fresh play (miniplayer start / expand).
+  function bootstrapPlaying(): void {
+    const v = document.querySelector("video") as HTMLVideoElement | null;
+    if (v && !v.paused && !v.ended && v.readyState >= 2) emit("play", v);
+  }
+
   scan();
   new MutationObserver(scan).observe(document.documentElement, { childList: true, subtree: true });
   window.addEventListener("pagehide", stopActive);
@@ -128,10 +136,12 @@ async function main(): Promise<void> {
   // element keeps playing, so no native "play" fires and the URL no longer
   // identifies it. The probe publishes the real id; when it changes, bootstrap a
   // play for the still-playing element so the session starts/switches.
-  new MutationObserver(() => {
-    const v = document.querySelector("video") as HTMLVideoElement | null;
-    if (v && !v.paused && !v.ended && v.readyState >= 2) emit("play", v);
-  }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-wt-video-id"] });
+  if (youtubeAdapter.matches()) {
+    new MutationObserver(bootstrapPlaying).observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-wt-video-id"],
+    });
+  }
   document.addEventListener("visibilitychange", () => {
     // Don't treat backgrounding as a stop: the video usually keeps playing, and
     // Chrome simply throttles the tab so timeupdate stops firing — tracking
@@ -141,8 +151,7 @@ async function main(): Promise<void> {
     // watched time.
     if (document.visibilityState !== "visible") return;
     scan();
-    const v = document.querySelector("video") as HTMLVideoElement | null;
-    if (v && !v.paused && !v.ended && v.readyState >= 2) emit("play", v);
+    bootstrapPlaying();
   });
 }
 

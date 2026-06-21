@@ -1,9 +1,10 @@
 // Runs in YouTube's MAIN world (the isolated content script can't see page JS).
-// Reads the selected audio track from the player API and republishes it onto
-// <html> data attributes for the content script to read synchronously.
+// Reads player state — the selected audio track and the real playing video id —
+// from the player API and republishes it onto <html> data attributes for the
+// content script to read synchronously.
 // Best-effort: YouTube's player internals are undocumented; failures are silent.
-// The shape parsing lives in core/ytaudio.ts (pure, unit-tested against real
-// player payloads); this file is just the DOM/player glue.
+// The audio-shape parsing lives in core/ytaudio.ts (pure, unit-tested against
+// real player payloads); this file is just the DOM/player glue.
 
 import { selectedLanguage } from "./core/ytaudio";
 
