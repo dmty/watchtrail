@@ -10,10 +10,12 @@ import (
 // replay order for session reconstruction.
 func (r *SQLiteRepo) AllEvents(ctx context.Context) ([]Event, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, media_item_id, source_kind, source_instance, type,
-		        position_seconds, occurred_at, received_at, raw
-		   FROM watch_event
-		  ORDER BY occurred_at, id`)
+		`SELECT e.id, e.media_item_id, e.source_kind, e.source_instance, e.type,
+		        e.position_seconds, e.occurred_at, e.received_at, e.raw
+		   FROM watch_event e
+		   JOIN media_item m ON m.id = e.media_item_id
+		  WHERE m.deleted_at IS NULL
+		  ORDER BY e.occurred_at, e.id`)
 	if err != nil {
 		return nil, err
 	}

@@ -44,6 +44,25 @@ func TestAllEventsAndDurations(t *testing.T) {
 	}
 }
 
+func TestAllEventsExcludesDeletedMedia(t *testing.T) {
+	r := openTemp(t)
+	ctx := context.Background()
+	base := time.Date(2026, 6, 15, 12, 0, 0, 0, time.UTC)
+	seedEvent(t, r, "e1", "m1", "vlc", "start", 0, base)
+	seedEvent(t, r, "e2", "m2", "vlc", "start", 0, base.Add(time.Second))
+
+	if _, err := r.SoftDeleteMedia(ctx, "m1"); err != nil {
+		t.Fatal(err)
+	}
+	evs, err := r.AllEvents(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(evs) != 1 || evs[0].MediaItemID != "m2" {
+		t.Fatalf("AllEvents = %+v; want only m2's event", evs)
+	}
+}
+
 func TestReplaceAllSessions(t *testing.T) {
 	r := openTemp(t)
 	ctx := context.Background()
