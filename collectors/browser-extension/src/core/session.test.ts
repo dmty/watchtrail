@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { newSession, step } from "./session";
+import { newSession, step, switchMedia } from "./session";
 
 describe("session step", () => {
   it("emits start once, then resume on later play", () => {
@@ -46,5 +46,35 @@ describe("session step", () => {
   it("emits progress at exactly the 30s boundary", () => {
     const s = step(newSession(), "play", 1000).state; // lastProgress = 1000
     expect(step(s, "timeupdate", 31000).type).toBe("progress"); // exactly +30000, >= boundary
+  });
+});
+
+describe("switchMedia", () => {
+  it("same id is a no-op with no close", () => {
+    const s = step(newSession(), "play", 0).state;
+    const r = switchMedia(s, "ABC", "ABC", 1000);
+    expect(r.close).toBeNull();
+    expect(r.state).toBe(s);
+    expect(r.currentId).toBe("ABC");
+  });
+
+  it("changing id mid-session closes the old with a stop and resets", () => {
+    const s = step(newSession(), "play", 0).state; // started
+    const r = switchMedia(s, "ABC", "XYZ", 1000);
+    expect(r.close).toBe("stop");
+    expect(r.state.started).toBe(false);
+    expect(r.currentId).toBe("XYZ");
+  });
+
+  it("changing id with no started session does not close", () => {
+    const r = switchMedia(newSession(), "ABC", "XYZ", 1000);
+    expect(r.close).toBeNull();
+    expect(r.currentId).toBe("XYZ");
+  });
+
+  it("treats a null previous id as a change without close", () => {
+    const r = switchMedia(newSession(), null, "ABC", 1000);
+    expect(r.close).toBeNull();
+    expect(r.currentId).toBe("ABC");
   });
 });

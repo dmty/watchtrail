@@ -40,3 +40,14 @@ export function step(
       return { state, type: null };
   }
 }
+
+export function switchMedia(
+  state: SessionState,
+  currentId: string | null,
+  newId: string,
+  nowMs: number,
+): { state: SessionState; currentId: string; close: EventType | null } {
+  if (currentId === newId) return { state, currentId: newId, close: null };
+  const close = state.started ? step(state, "hide", nowMs).type : null;
+  return { state: newSession(), currentId: newId, close };
+}
