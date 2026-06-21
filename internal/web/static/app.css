@@ -5,6 +5,7 @@
 :root{
   --bg:#0e0b09; --surface:#15110d; --ink:#ece3d4; --muted:#8c8270;
   --line:rgba(236,227,212,.10); --amber:#e6a23c; --amber-dim:rgba(230,162,60,.16);
+  --red:#d24b38; --red-dim:rgba(210,75,56,.15);
 }
 *{box-sizing:border-box}
 html{color-scheme:dark}
@@ -119,21 +120,15 @@ canvas{margin:.4rem 0 1.2rem; max-width:100%}
 .chip .dot{width:5px; height:5px; border-radius:50%; background:var(--amber); box-shadow:0 0 7px rgba(230,162,60,.7)}
 .chip .chip-name{color:var(--muted); text-transform:none; letter-spacing:0}
 
-/* watch-out link */
+/* action row: watch-out link + delete, a matched outlined pair */
+.actions{display:flex; align-items:center; gap:.6rem; flex-wrap:wrap}
 .watch{display:inline-flex; align-items:center; gap:.45rem; font-size:.72rem; text-transform:uppercase; letter-spacing:.12em; text-decoration:none; color:var(--amber); border:1px solid var(--amber-dim); border-radius:3px; padding:.5rem .9rem; transition:border-color .2s, background .2s, gap .2s}
 .watch:hover{border-color:var(--amber); background:var(--amber-dim); gap:.65rem}
 .watch .arr{font-size:.95em}
 
-@media(max-width:46rem){.media-card{grid-template-columns:1fr; align-items:start}}
+/* delete: same footprint as .watch, hierarchy carried by colour, not size */
+.delete{display:contents}
+.delete button{display:inline-flex; align-items:center; margin:0; font:inherit; font-size:.72rem; text-transform:uppercase; letter-spacing:.12em; color:var(--red); background:transparent; border:1px solid var(--red-dim); border-radius:3px; padding:.5rem .9rem; cursor:pointer; transition:border-color .2s, background .2s, color .2s}
+.delete button:hover{border-color:var(--red); background:var(--red-dim)}
 
-.media-card .delete { margin-top: .75rem; }
-.media-card .delete button {
-  font: inherit;
-  color: #b3261e;
-  background: transparent;
-  border: 1px solid currentColor;
-  border-radius: 6px;
-  padding: .35rem .8rem;
-  cursor: pointer;
-}
-.media-card .delete button:hover { background: #b3261e; color: #fff; }
+@media(max-width:46rem){.media-card{grid-template-columns:1fr; align-items:start}}
