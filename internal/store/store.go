@@ -85,6 +85,10 @@ type Repository interface {
 	CountSessions(ctx context.Context) (int, error)
 	CountMedia(ctx context.Context) (int, error)
 
+	// SoftDeleteMedia marks a media item and all its sessions deleted (sets
+	// deleted_at). found is false when no live item has that id. Idempotent.
+	SoftDeleteMedia(ctx context.Context, id string) (found bool, err error)
+
 	// Replay surface (M2 rebuild-sessions).
 	AllEvents(ctx context.Context) ([]Event, error)
 	AllSessions(ctx context.Context) ([]Session, error)
