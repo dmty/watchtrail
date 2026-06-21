@@ -159,3 +159,40 @@ func TestProcessPopulatesSession(t *testing.T) {
 		t.Fatalf("watch_session rows = %d, want 1", n)
 	}
 }
+
+func TestProcessRestoresDeletedMedia(t *testing.T) {
+	p, repo := newTestPipeline(t)
+	ctx := context.Background()
+	sr := repo.(*store.SQLiteRepo)
+
+	body1 := `{"v":1,"event_id":"r1","type":"start","occurred_at":"2026-06-14T09:31:02Z","source_kind":"vlc","source_instance":"laptop","media":{"external_id":"file:abc","title":"X","duration_seconds":100},"position_seconds":0}`
+	if err := p.Process(ctx, []byte(body1)); err != nil {
+		t.Fatal(err)
+	}
+	var id string
+	if err := sr.DB().QueryRowContext(ctx,
+		`SELECT id FROM media_item WHERE identity_key='vlc:file:abc'`).Scan(&id); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := repo.SoftDeleteMedia(ctx, id); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok, _ := repo.MediaByID(ctx, id); ok {
+		t.Fatal("media should be hidden after delete")
+	}
+
+	body2 := `{"v":1,"event_id":"r2","type":"progress","occurred_at":"2026-06-14T09:32:02Z","source_kind":"vlc","source_instance":"laptop","media":{"external_id":"file:abc"},"position_seconds":30}`
+	if err := p.Process(ctx, []byte(body2)); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok, err := repo.MediaByID(ctx, id); err != nil || !ok {
+		t.Fatalf("media should be restored after re-ingest: ok=%v err=%v", ok, err)
+	}
+	rows, err := repo.SessionsForMedia(ctx, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) == 0 {
+		t.Fatal("sessions should be visible after restore")
+	}
+}

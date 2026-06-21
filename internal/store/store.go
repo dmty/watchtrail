@@ -88,6 +88,9 @@ type Repository interface {
 	// SoftDeleteMedia marks a media item and all its sessions deleted (sets
 	// deleted_at). found is false when no live item has that id. Idempotent.
 	SoftDeleteMedia(ctx context.Context, id string) (found bool, err error)
+	// RestoreMedia clears deleted_at on a media item and its sessions, undoing a
+	// prior SoftDeleteMedia. A no-op when the item is not soft-deleted.
+	RestoreMedia(ctx context.Context, id string) error
 
 	// Replay surface (M2 rebuild-sessions).
 	AllEvents(ctx context.Context) ([]Event, error)

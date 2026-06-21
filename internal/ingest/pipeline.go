@@ -63,6 +63,12 @@ func (p *Pipeline) Process(ctx context.Context, raw []byte) error {
 		return err
 	}
 
+	// A new event for a previously deleted item is a deliberate signal the user
+	// cares about it again — bring it (and its history) back.
+	if err := p.repo.RestoreMedia(ctx, mediaID); err != nil {
+		return err
+	}
+
 	stored := store.Event{
 		ID:              ev.EventID,
 		MediaItemID:     mediaID,

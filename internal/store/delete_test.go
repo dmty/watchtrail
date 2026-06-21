@@ -57,3 +57,38 @@ func TestSoftDeleteMediaIdempotentAndUnknown(t *testing.T) {
 		t.Fatalf("unknown delete found=%v err=%v want found=false", found, err)
 	}
 }
+
+func TestRestoreMediaClearsDeletedAt(t *testing.T) {
+	r := openTemp(t)
+	ctx := context.Background()
+	base := time.Date(2026, 6, 18, 12, 0, 0, 0, time.UTC)
+	if _, err := r.FindOrCreateMediaItemWithID(ctx, "m1", "The Film", "vlc"); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.UpsertSession(ctx, Session{
+		ID: "s1", MediaItemID: "m1", SourceKind: "vlc", SourceInstance: "i1",
+		StartedAt: base, EndedAt: base.Add(60 * time.Second), WatchedSeconds: 60,
+		MaxPositionSeconds: 60, EventCount: 2, CreatedAt: base, UpdatedAt: base,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := r.SoftDeleteMedia(ctx, "m1"); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.RestoreMedia(ctx, "m1"); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok, err := r.MediaByID(ctx, "m1"); err != nil || !ok {
+		t.Fatalf("MediaByID after restore: ok=%v err=%v want ok=true", ok, err)
+	}
+	rows, err := r.SessionsForMedia(ctx, "m1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("sessions after restore = %d want 1", len(rows))
+	}
+	if err := r.RestoreMedia(ctx, "m1"); err != nil {
+		t.Fatalf("restore of a live item should be a no-op: %v", err)
+	}
+}
