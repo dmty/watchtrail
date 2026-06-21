@@ -155,15 +155,14 @@ go test ./...
 
 ## Status and roadmap
 
-Working today: HTTP and TCP ingest, event validation, media identity deduplication, idempotent append-only storage, SQLite with embedded migrations.
+Working today: HTTP and TCP ingest, event validation, media identity deduplication, idempotent append-only storage, SQLite with embedded migrations, sessionizer with replayable `rebuild-sessions`, a read API and CLI, a server-rendered htmx dashboard with stats and SSE live updates, a VLC Lua collector, and an MV3 browser extension (YouTube + generic `<video>`). Recent additions: audio-language capture, VLC thumbnails, hourly stats, and soft-delete with restore-on-rewatch.
 
 Planned next (each independently useful, not yet built):
 
-- **Sessionization** — derive watch sessions from raw events; replayable over all history
-- **Read API + CLI** — query your history from the terminal
-- **Dashboard** — server-rendered local web UI
-- **VLC Lua collector** — sends events over TCP from inside VLC
-- **Browser extension** — YouTube and other streaming sites
+- **Export / import** — newline-delimited JSON of events, replayed through the normal pipeline
+- **Multi-device sync** — alternate `Repository` implementation, only if actually needed
+- **More sources** — mpv, Plex / Jellyfin webhooks, manual entry, platform-history import
+- **Richer analytics** — as the data justifies them
 
 Because raw events are stored verbatim, the sessionizer and any future analytics can be recomputed over your full history whenever the logic improves.
 
