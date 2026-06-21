@@ -1,4 +1,4 @@
-import { youtubeIdentity } from "../core/identity";
+import { youtubeIdentityFromState } from "../core/identity";
 import { audioMeta, type SelectedAudio } from "../core/audiolang";
 import type { Adapter, MediaDetails } from "./types";
 
@@ -37,7 +37,7 @@ function videoTitle(): string | undefined {
 
 export const youtubeAdapter: Adapter = {
   matches: () => location.hostname.endsWith("youtube.com"),
-  identity: () => youtubeIdentity(location.href),
+  identity: () => youtubeIdentityFromState(document.documentElement.dataset.wtVideoId, location.href),
   details: (video): MediaDetails => {
     const sel = selectedAudioFromDom();
     const meta = { ...channelMeta(), ...audioMeta(sel) };

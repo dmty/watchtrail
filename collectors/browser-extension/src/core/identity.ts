@@ -24,6 +24,14 @@ export function youtubeIdentity(rawUrl: string): Identity | null {
   return { source_kind: "youtube", external_id: id };
 }
 
+export function youtubeIdentityFromState(
+  videoId: string | null | undefined,
+  url: string,
+): Identity | null {
+  if (videoId) return { source_kind: "youtube", external_id: videoId };
+  return youtubeIdentity(url);
+}
+
 export function genericIdentity(rawUrl: string): Identity | null {
   let u: URL;
   try {

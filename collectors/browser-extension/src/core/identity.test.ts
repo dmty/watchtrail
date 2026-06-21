@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { youtubeIdentity, genericIdentity } from "./identity";
+import { youtubeIdentity, genericIdentity, youtubeIdentityFromState } from "./identity";
 
 describe("youtubeIdentity", () => {
   it("reads the v param on /watch", () => {
@@ -30,5 +30,22 @@ describe("genericIdentity", () => {
   });
   it("returns null for junk", () => {
     expect(genericIdentity("nope")).toBeNull();
+  });
+});
+
+describe("youtubeIdentityFromState", () => {
+  it("prefers the dataset video id over the URL", () => {
+    const id = youtubeIdentityFromState("VIDID", "https://www.youtube.com/watch?v=URLID");
+    expect(id?.external_id).toBe("VIDID");
+    expect(id?.source_kind).toBe("youtube");
+  });
+
+  it("falls back to the URL when the id is empty or absent", () => {
+    expect(youtubeIdentityFromState("", "https://www.youtube.com/watch?v=URLID")?.external_id).toBe("URLID");
+    expect(youtubeIdentityFromState(undefined, "https://www.youtube.com/watch?v=URLID")?.external_id).toBe("URLID");
+  });
+
+  it("returns null when neither id nor a video URL is present", () => {
+    expect(youtubeIdentityFromState(undefined, "https://www.youtube.com/feed/subscriptions")).toBeNull();
   });
 });
