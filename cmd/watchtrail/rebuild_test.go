@@ -78,3 +78,32 @@ func TestRebuildWriteResolvesDrift(t *testing.T) {
 		t.Fatal("drift after write")
 	}
 }
+
+func TestRebuildDoesNotResurrectDeleted(t *testing.T) {
+	repo, err := store.Open(t.TempDir() + "/t.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer repo.Close()
+	ctx := context.Background()
+	base := time.Date(2026, 6, 15, 12, 0, 0, 0, time.UTC)
+	repo.FindOrCreateMediaItemWithID(ctx, "m1", "T", "vlc")
+	p := 30.0
+	repo.InsertEvent(ctx, store.Event{
+		ID: "e1", MediaItemID: "m1", SourceKind: "vlc", SourceInstance: "i1",
+		Type: "start", PositionSeconds: &p, OccurredAt: base, ReceivedAt: base, Raw: []byte("{}"),
+	})
+	if _, err := repo.SoftDeleteMedia(ctx, "m1"); err != nil {
+		t.Fatal(err)
+	}
+	cfg := sessionize.Config{SessionGap: 30 * time.Minute, CompletionThreshold: 0.9, ProgressCadence: 30 * time.Second}
+
+	var out bytes.Buffer
+	if _, err := runRebuildReport(ctx, &out, repo, cfg, true, func() time.Time { return base }); err != nil {
+		t.Fatal(err)
+	}
+	sessions, _ := repo.AllSessions(ctx)
+	if len(sessions) != 0 {
+		t.Fatalf("rebuild resurrected deleted media: got %d sessions", len(sessions))
+	}
+}
