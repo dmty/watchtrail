@@ -140,7 +140,7 @@ func TestItemPageHasDeleteForm(t *testing.T) {
 	if !strings.Contains(body, `action="/item/mX/delete"`) {
 		t.Fatalf("missing delete form action: %q", body)
 	}
-	if !strings.Contains(body, "hx-confirm=") {
-		t.Fatalf("delete form should confirm before posting: %q", body)
+	if !strings.Contains(body, `hx-confirm="Delete this item and all its watch history?"`) {
+		t.Fatalf("delete form missing exact confirm message: %q", body)
 	}
 }

@@ -6,8 +6,8 @@ import (
 	"time"
 )
 
-// AllEvents returns every watch_event ordered by (occurred_at, id) — the canonical
-// replay order for session reconstruction.
+// AllEvents returns every watch_event for non-deleted media, ordered by (occurred_at, id) —
+// the canonical replay order for session reconstruction.
 func (r *SQLiteRepo) AllEvents(ctx context.Context) ([]Event, error) {
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT e.id, e.media_item_id, e.source_kind, e.source_instance, e.type,
