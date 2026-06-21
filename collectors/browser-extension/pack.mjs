@@ -11,8 +11,18 @@ rmSync("pkg", { recursive: true, force: true });
 mkdirSync(STAGE, { recursive: true });
 copyFileSync("manifest.json", `${STAGE}/manifest.json`);
 cpSync("dist", `${STAGE}/dist`, { recursive: true });
+cpSync("icons", `${STAGE}/icons`, {
+  recursive: true,
+  filter: (src) => !src.endsWith(".svg"),
+});
 
-execFileSync("zip", ["-r", "-q", "../watchtrail-extension.zip", "."], { cwd: STAGE });
+execFileSync("zip", ["-r", "-q", "../watchtrail-extension.zip", "."], {
+  cwd: STAGE,
+});
 
-console.log("Staged   pkg/watchtrail-extension/      (load-unpacked or --pack-extension source)");
-console.log("Zipped   pkg/watchtrail-extension.zip   (Chrome Web Store upload)");
+console.log(
+  "Staged   pkg/watchtrail-extension/      (load-unpacked or --pack-extension source)",
+);
+console.log(
+  "Zipped   pkg/watchtrail-extension.zip   (Chrome Web Store upload)",
+);

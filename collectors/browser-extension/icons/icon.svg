@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="WatchTrail">
+  <title>WatchTrail</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#16545a"/>
+      <stop offset="1" stop-color="#0a2e32"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="120" height="120" rx="26" ry="26" fill="url(#bg)"/>
+
+  <!-- Almond eye: bold, taller -->
+  <path d="M 18 60 Q 64 8 110 60 Q 64 112 18 60 Z"
+        fill="none" stroke="#fceabb" stroke-width="7.5" stroke-linejoin="round"/>
+
+  <!-- Pupil: play triangle, sized to leave eye whites visible -->
+  <path d="M 56 47 L 56 73 L 76 60 Z" fill="#fceabb"/>
+
+  <!-- Breadcrumb trail along lower lid -->
+  <circle cx="36" cy="100" r="3.2" fill="#fceabb" fill-opacity="0.55"/>
+  <circle cx="56" cy="106" r="3.4" fill="#fceabb" fill-opacity="0.78"/>
+  <circle cx="78" cy="106" r="3.6" fill="#fceabb"/>
+</svg>
