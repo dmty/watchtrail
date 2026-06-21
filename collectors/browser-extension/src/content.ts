@@ -1,7 +1,8 @@
 import { youtubeAdapter } from "./adapters/youtube";
 import { genericAdapter } from "./adapters/generic";
-import { newSession, step, type NativeKind, type SessionState } from "./core/session";
-import { buildEvent } from "./core/event";
+import { newSession, step, switchMedia, type NativeKind, type SessionState } from "./core/session";
+import { buildEvent, type EventType, type WatchEvent } from "./core/event";
+import type { Identity } from "./core/identity";
 import { withDefaults } from "./config";
 import type { Adapter } from "./adapters/types";
 
@@ -41,40 +42,56 @@ async function main(): Promise<void> {
   const adapter = pickAdapter();
   if (youtubeAdapter.matches()) injectAudioProbe();
   let state: SessionState = newSession();
-  let currentId: string | null = adapter.identity()?.external_id ?? null;
+  let current: Identity | null = adapter.identity();
+  let lastPosition = 0;
 
-  function emit(native: NativeKind, video: HTMLVideoElement): void {
-    const idy = adapter.identity();
-    if (!idy) return;
-    if (idy.external_id !== currentId) {
-      state = newSession();
-      currentId = idy.external_id;
-    }
-    const r = step(state, native, Date.now());
-    state = r.state;
-    if (!r.type) return;
-    const d = adapter.details(video);
-    const event = buildEvent({
-      type: r.type,
-      identity: idy,
-      position_seconds: Math.round(video.currentTime),
-      title: d.title,
-      duration_seconds: d.duration_seconds,
-      url_or_path: d.url_or_path,
-      kind: d.kind,
-      language: d.language,
-      meta: d.meta,
-    });
-    // After an extension reload/update, content scripts in already-open tabs
-    // are orphaned: chrome.runtime is gone and sendMessage throws "Extension
-    // context invalidated". Guard so a stale tab fails quietly instead of
-    // spamming uncaught errors.
+  // After an extension reload/update, content scripts in already-open tabs are
+  // orphaned: chrome.runtime is gone and sendMessage throws. Guard so a stale
+  // tab fails quietly instead of spamming uncaught errors.
+  function dispatch(event: WatchEvent): void {
     if (!chrome.runtime?.id) return;
     try {
       void chrome.runtime.sendMessage({ kind: "watchtrail-event", event }).catch(() => {});
     } catch {
       /* context invalidated between the check and the call */
     }
+  }
+
+  function emitClose(idy: Identity, position: number): void {
+    dispatch(buildEvent({ type: "stop", identity: idy, position_seconds: position }));
+  }
+
+  function emitFull(type: EventType, idy: Identity, video: HTMLVideoElement): void {
+    const d = adapter.details(video);
+    dispatch(
+      buildEvent({
+        type,
+        identity: idy,
+        position_seconds: Math.round(video.currentTime),
+        title: d.title,
+        duration_seconds: d.duration_seconds,
+        url_or_path: d.url_or_path,
+        kind: d.kind,
+        language: d.language,
+        meta: d.meta,
+      }),
+    );
+  }
+
+  function emit(native: NativeKind, video: HTMLVideoElement): void {
+    const idy = adapter.identity();
+    if (!idy) return;
+    if (!current || idy.external_id !== current.external_id) {
+      const t = switchMedia(state, current?.external_id ?? null, idy.external_id, Date.now());
+      if (t.close && current) emitClose(current, lastPosition);
+      state = t.state;
+      current = idy;
+    }
+    lastPosition = Math.round(video.currentTime);
+    const r = step(state, native, Date.now());
+    state = r.state;
+    if (!r.type) return;
+    emitFull(r.type, idy, video);
   }
 
   const BOUND = "__wt_bound";
@@ -86,10 +103,9 @@ async function main(): Promise<void> {
     video.addEventListener("seeked", () => emit("seeked", video));
     video.addEventListener("ended", () => emit("ended", video));
     video.addEventListener("timeupdate", () => emit("timeupdate", video));
-    // The content script attaches at document_idle, but YouTube (and other
-    // autoplay sites) often start playback before that — so the native "play"
-    // already fired and was missed. Without a "play", the session never starts
-    // and every later event is dropped. Bootstrap from the current state.
+    // The content script attaches at document_idle, but YouTube often starts
+    // playback before that — the native "play" already fired and was missed.
+    // Bootstrap from the current state so the session still starts.
     if (!video.paused && !video.ended && video.readyState >= 2) {
       emit("play", video);
     }
@@ -107,6 +123,15 @@ async function main(): Promise<void> {
   scan();
   new MutationObserver(scan).observe(document.documentElement, { childList: true, subtree: true });
   window.addEventListener("pagehide", stopActive);
+  // YouTube reuses one <video> element across watch/miniplayer/fullscreen. When a
+  // video starts in the miniplayer (or is expanded back to the watch page) the
+  // element keeps playing, so no native "play" fires and the URL no longer
+  // identifies it. The probe publishes the real id; when it changes, bootstrap a
+  // play for the still-playing element so the session starts/switches.
+  new MutationObserver(() => {
+    const v = document.querySelector("video") as HTMLVideoElement | null;
+    if (v && !v.paused && !v.ended && v.readyState >= 2) emit("play", v);
+  }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-wt-video-id"] });
   document.addEventListener("visibilitychange", () => {
     // Don't treat backgrounding as a stop: the video usually keeps playing, and
     // Chrome simply throttles the tab so timeupdate stops firing — tracking

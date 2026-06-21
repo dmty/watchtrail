@@ -81,6 +81,14 @@ them.
 Both appear in the dashboard alongside VLC, with `youtube` / `web` / `vlc`
 source badges.
 
+## Miniplayer and fullscreen
+
+YouTube identity comes from `data-wt-video-id` on `<html>`, written by a
+MAIN-world probe that reads the player's real `video_id`. This means playback
+is tracked continuously across watch-page ↔ miniplayer ↔ fullscreen transitions
+without missing a `start` or `stop`. The page URL is only a fallback when the
+probe hasn't run yet or on non-YouTube pages.
+
 ## Tests
 
 ```
