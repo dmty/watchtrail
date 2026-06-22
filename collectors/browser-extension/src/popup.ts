@@ -1,4 +1,5 @@
 import { withDefaults, type Config } from "./config";
+import { registerGeneric, unregisterGeneric } from "./registration";
 
 const CONFIG_KEY = "watchtrail_config";
 
@@ -29,24 +30,6 @@ async function currentHost(): Promise<string | null> {
   }
 }
 
-async function registerGeneric(host: string): Promise<void> {
-  try {
-    await chrome.scripting.registerContentScripts([
-      { id: `wt-generic-${host}`, matches: [`*://${host}/*`], js: ["dist/content.js"], runAt: "document_idle" },
-    ]);
-  } catch {
-    /* already registered */
-  }
-}
-
-async function unregisterGeneric(host: string): Promise<void> {
-  try {
-    await chrome.scripting.unregisterContentScripts({ ids: [`wt-generic-${host}`] });
-  } catch {
-    /* not registered */
-  }
-}
-
 async function init(): Promise<void> {
   const cfg = await load();
   el<HTMLInputElement>("enabled").checked = cfg.enabled;
@@ -72,7 +55,9 @@ async function init(): Promise<void> {
 
   el("allow").addEventListener("click", async () => {
     if (!host) return;
-    const granted = await chrome.permissions.request({ origins: [`*://${host}/*`] });
+    const granted = await chrome.permissions.request({
+      origins: [`*://${host}/*`],
+    });
     if (!granted) {
       setStatus("Permission denied.");
       return;
