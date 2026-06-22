@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>WatchTrail · Settings</title>
+    <link rel="stylesheet" href="ui.css" />
+  </head>
+  <body class="options">
+    <header class="site">
+      <span class="brand">watch<b>·</b>trail</span>
+      <nav><a href="#" id="closeLink">Close</a></nav>
+    </header>
+    <main>
+      <h1>Settings</h1>
+
+      <section>
+        <h2>Core connection</h2>
+        <label class="field" for="coreUrl">URL</label>
+        <input id="coreUrl" type="url" placeholder="http://127.0.0.1:8765" />
+        <label class="field" for="token" style="margin-top:.9rem">Token</label>
+        <input id="token" type="password" placeholder="(optional)" />
+        <div class="row" style="margin-top:1rem">
+          <button class="btn primary" id="save">Save</button>
+          <button class="btn" id="test">Test connection</button>
+          <span class="helper" id="testResult"></span>
+        </div>
+      </section>
+
+      <section>
+        <h2>Global</h2>
+        <div class="row">
+          <label class="switch"><input type="checkbox" id="enabled" /><span class="slider"></span></label>
+          <span class="helper">Enabled — turn collection on or off across all tracked sites.</span>
+        </div>
+      </section>
+
+      <section>
+        <h2>Tracked sites</h2>
+        <div id="sites"></div>
+      </section>
+
+      <div class="footer" id="footer"></div>
+    </main>
+    <script src="options.js"></script>
+  </body>
+</html>
