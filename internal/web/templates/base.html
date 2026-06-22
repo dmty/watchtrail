@@ -1,23 +1,35 @@
 {{define "base"}}<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{{block "title" .}}WatchTrail{{end}}</title>
-  <link rel="stylesheet" href="/static/app.css">
-  <script src="/static/htmx.min.js" defer></script>
-</head>
-<body>
-  <header class="site">
-    <span class="brand">watch<b>·</b>trail</span>
-    <nav>
-      <a href="/">Recent</a>
-      <a href="/stats">Stats</a>
-      <a href="/search">Search</a>
-    </nav>
-  </header>
-  <main>
-    {{block "content" .}}{{end}}
-  </main>
-</body>
-</html>{{end}}
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>{{block "title" .}}WatchTrail{{end}}</title>
+        <link rel="icon" type="image/svg+xml" href="/static/favicon.svg" />
+        <link
+            rel="icon"
+            type="image/png"
+            sizes="32x32"
+            href="/static/favicon-32.png"
+        />
+        <link
+            rel="icon"
+            type="image/png"
+            sizes="16x16"
+            href="/static/favicon-16.png"
+        />
+        <link rel="stylesheet" href="/static/app.css" />
+        <script src="/static/htmx.min.js" defer></script>
+    </head>
+    <body>
+        <header class="site">
+            <span class="brand">watch<b>·</b>trail</span>
+            <nav>
+                <a href="/">Recent</a>
+                <a href="/stats">Stats</a>
+                <a href="/search">Search</a>
+            </nav>
+        </header>
+        <main>{{block "content" .}}{{end}}</main>
+    </body>
+</html>
+{{end}}
