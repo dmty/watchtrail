@@ -25,7 +25,7 @@ export async function probeCore(
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
   try {
-    const url = trimmed.replace(/\/+$/, "") + "/healthz";
+    const url = trimmed.replace(/\/+$/, "") + "/api/v1/health";
     const res = await f(url, { method: "GET", headers, signal: ctrl.signal });
     if (res.status >= 200 && res.status < 300) {
       return { state: "reachable", status: res.status };

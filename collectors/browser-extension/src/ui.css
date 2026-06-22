@@ -332,10 +332,12 @@ body.popup header.bar {
     justify-content: space-between;
     margin: 0 0 0.7rem;
 }
-body.popup .settings-link {
-    display: block;
+body.popup .settings-row {
     margin-top: 0.8rem;
     text-align: right;
+}
+body.popup .settings-link {
+    display: inline-block;
     color: var(--muted);
     text-decoration: none;
     font-size: 0.68rem;

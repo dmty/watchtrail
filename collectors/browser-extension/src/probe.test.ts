@@ -14,19 +14,27 @@ describe("probeCore", () => {
 
   it("returns reachable on 2xx", async () => {
     const fetchFn = async () => new Response("ok", { status: 200 });
-    const r = await probeCore("http://localhost:8765", "", { fetchFn: fetchFn as typeof fetch });
+    const r = await probeCore("http://localhost:8765", "", {
+      fetchFn: fetchFn as typeof fetch,
+    });
     expect(r).toEqual({ state: "reachable", status: 200 });
   });
 
   it("returns unreachable on non-2xx", async () => {
     const fetchFn = async () => new Response("nope", { status: 401 });
-    const r = await probeCore("http://localhost:8765", "x", { fetchFn: fetchFn as typeof fetch });
+    const r = await probeCore("http://localhost:8765", "x", {
+      fetchFn: fetchFn as typeof fetch,
+    });
     expect(r.state).toBe("unreachable");
   });
 
   it("returns unreachable on network error", async () => {
-    const fetchFn = async () => { throw new Error("connection refused"); };
-    const r = await probeCore("http://localhost:8765", "", { fetchFn: fetchFn as typeof fetch });
+    const fetchFn = async () => {
+      throw new Error("connection refused");
+    };
+    const r = await probeCore("http://localhost:8765", "", {
+      fetchFn: fetchFn as typeof fetch,
+    });
     expect(r).toEqual({ state: "unreachable", reason: "connection refused" });
   });
 
@@ -36,7 +44,21 @@ describe("probeCore", () => {
       seenAuth = new Headers(init?.headers).get("authorization");
       return new Response("ok", { status: 200 });
     };
-    await probeCore("http://localhost:8765", "abc", { fetchFn: fetchFn as typeof fetch });
+    await probeCore("http://localhost:8765", "abc", {
+      fetchFn: fetchFn as typeof fetch,
+    });
     expect(seenAuth).toBe("Bearer abc");
+  });
+
+  it("hits the Core health endpoint", async () => {
+    let seenUrl = "";
+    const fetchFn = async (url: RequestInfo | URL) => {
+      seenUrl = String(url);
+      return new Response("ok", { status: 200 });
+    };
+    await probeCore("http://localhost:8765/", "", {
+      fetchFn: fetchFn as typeof fetch,
+    });
+    expect(seenUrl).toBe("http://localhost:8765/api/v1/health");
   });
 });
