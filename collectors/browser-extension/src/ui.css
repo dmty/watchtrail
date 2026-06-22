@@ -337,11 +337,12 @@ body.popup header.bar {
     margin: 0 0 0.7rem;
 }
 body.popup .settings-row {
+    display: flex;
+    align-items: center;
     margin-top: 0.8rem;
-    text-align: right;
 }
-body.popup .settings-row .settings-link + .settings-link {
-    margin-left: 1rem;
+body.popup .settings-row #settings {
+    margin-left: auto;
 }
 body.popup .settings-link {
     display: inline-block;
