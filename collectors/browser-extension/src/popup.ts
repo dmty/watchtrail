@@ -47,6 +47,14 @@ async function init(): Promise<void> {
   const cfg = await load();
   el<HTMLInputElement>("enabled").checked = cfg.enabled;
 
+  if (cfg.coreUrl.trim() !== "") {
+    const dash = el<HTMLAnchorElement>("dashboard");
+    dash.href = cfg.coreUrl.replace(/\/+$/, "") + "/";
+    dash.target = "_blank";
+    dash.rel = "noopener";
+    dash.hidden = false;
+  }
+
   const host = await currentHost();
   el("host").textContent = host ?? "(no site)";
   renderTrackButtons(host !== null && cfg.allowlist.includes(host));

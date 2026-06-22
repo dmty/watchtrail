@@ -62,12 +62,24 @@ function renderSites(cfg: Config): void {
   host.appendChild(table);
 }
 
+function renderDashboardLink(coreUrl: string): void {
+  const link = el<HTMLAnchorElement>("dashboardLink");
+  const trimmed = coreUrl.trim();
+  if (trimmed === "") {
+    link.hidden = true;
+    return;
+  }
+  link.href = trimmed.replace(/\/+$/, "") + "/";
+  link.hidden = false;
+}
+
 async function init(): Promise<void> {
   const cfg = await load();
   el<HTMLInputElement>("coreUrl").value = cfg.coreUrl;
   el<HTMLInputElement>("token").value = cfg.token;
   el<HTMLInputElement>("enabled").checked = cfg.enabled;
   renderSites(cfg);
+  renderDashboardLink(cfg.coreUrl);
 
   const manifest = chrome.runtime.getManifest();
   el("footer").textContent = `WatchTrail extension · v${manifest.version}`;
@@ -88,6 +100,7 @@ async function init(): Promise<void> {
     c.coreUrl = el<HTMLInputElement>("coreUrl").value.trim();
     c.token = el<HTMLInputElement>("token").value.trim();
     await save(c);
+    renderDashboardLink(c.coreUrl);
     el("testResult").textContent = "Saved.";
   });
 

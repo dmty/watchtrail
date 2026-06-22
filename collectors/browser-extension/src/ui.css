@@ -253,6 +253,10 @@ body.options header.site {
 body.options header.site .brand {
     font-size: 1.5rem;
 }
+body.options header.site nav {
+    display: flex;
+    gap: 1.4rem;
+}
 body.options header.site nav a {
     color: var(--muted);
     text-decoration: none;
@@ -335,6 +339,9 @@ body.popup header.bar {
 body.popup .settings-row {
     margin-top: 0.8rem;
     text-align: right;
+}
+body.popup .settings-row .settings-link + .settings-link {
+    margin-left: 1rem;
 }
 body.popup .settings-link {
     display: inline-block;
