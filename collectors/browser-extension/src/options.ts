@@ -86,7 +86,7 @@ async function init(): Promise<void> {
   el("save").addEventListener("click", async () => {
     const c = await load();
     c.coreUrl = el<HTMLInputElement>("coreUrl").value.trim();
-    c.token = el<HTMLInputElement>("token").value;
+    c.token = el<HTMLInputElement>("token").value.trim();
     await save(c);
     el("testResult").textContent = "Saved.";
   });
