@@ -19,26 +19,47 @@ function el<T extends HTMLElement>(id: string): T {
 
 function renderSites(cfg: Config): void {
   const host = el<HTMLDivElement>("sites");
+  host.replaceChildren();
   if (cfg.allowlist.length === 0) {
-    host.innerHTML = `<div class="empty">No sites tracked yet.</div>`;
+    const empty = document.createElement("div");
+    empty.className = "empty";
+    empty.textContent = "No sites tracked yet.";
+    host.appendChild(empty);
     return;
   }
-  const rows = cfg.allowlist
-    .map(
-      (h) => `<tr><td class="host">${h}</td><td style="text-align:right"><button class="btn danger" data-host="${h}">Stop</button></td></tr>`,
-    )
-    .join("");
-  host.innerHTML = `<table class="ledger"><thead><tr><th>Host</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
-  host.querySelectorAll<HTMLButtonElement>("button[data-host]").forEach((btn) => {
+  const table = document.createElement("table");
+  table.className = "ledger";
+  const thead = document.createElement("thead");
+  const headRow = document.createElement("tr");
+  const th1 = document.createElement("th");
+  th1.textContent = "Host";
+  const th2 = document.createElement("th");
+  headRow.append(th1, th2);
+  thead.appendChild(headRow);
+  const tbody = document.createElement("tbody");
+  for (const h of cfg.allowlist) {
+    const tr = document.createElement("tr");
+    const tdHost = document.createElement("td");
+    tdHost.className = "host";
+    tdHost.textContent = h;
+    const tdAct = document.createElement("td");
+    tdAct.style.textAlign = "right";
+    const btn = document.createElement("button");
+    btn.className = "btn danger";
+    btn.textContent = "Stop";
     btn.addEventListener("click", async () => {
-      const h = btn.dataset.host!;
       const c = await load();
       c.allowlist = c.allowlist.filter((x) => x !== h);
       await save(c);
       await unregisterGeneric(h);
       renderSites(c);
     });
-  });
+    tdAct.appendChild(btn);
+    tr.append(tdHost, tdAct);
+    tbody.appendChild(tr);
+  }
+  table.append(thead, tbody);
+  host.appendChild(table);
 }
 
 async function init(): Promise<void> {
@@ -74,8 +95,10 @@ async function init(): Promise<void> {
     const c = await load();
     el("testResult").textContent = "Testing…";
     const r = await probeCore(c.coreUrl, c.token);
-    if (r.state === "reachable") el("testResult").textContent = `Reachable (HTTP ${r.status}).`;
-    else if (r.state === "not-configured") el("testResult").textContent = "Core URL not set.";
+    if (r.state === "reachable")
+      el("testResult").textContent = `Reachable (HTTP ${r.status}).`;
+    else if (r.state === "not-configured")
+      el("testResult").textContent = "Core URL not set.";
     else el("testResult").textContent = `Unreachable: ${r.reason}`;
   });
 }
