@@ -1,35 +1,33 @@
 <!doctype html>
 <html>
-  <head>
-    <meta charset="utf-8" />
-    <style>
-      body { font: 13px system-ui, sans-serif; width: 260px; margin: 0; padding: 12px; }
-      h1 { font-size: 14px; margin: 0 0 8px; }
-      fieldset { border: 1px solid #ccc; border-radius: 4px; margin: 8px 0; padding: 8px; }
-      legend { padding: 0 4px; color: #666; }
-      label { display: block; margin: 4px 0; }
-      input[type="text"], input[type="password"] { width: 100%; box-sizing: border-box; }
-      button { margin-top: 6px; }
-      #status { color: #2a7; min-height: 1em; margin-top: 6px; }
-      #host { font-family: monospace; word-break: break-all; }
-    </style>
-  </head>
-  <body>
-    <h1>WatchTrail</h1>
-    <label><input type="checkbox" id="enabled" /> Enabled</label>
-    <fieldset>
-      <legend>Core</legend>
-      <label>URL <input id="coreUrl" type="text" /></label>
-      <label>Token <input id="token" type="password" /></label>
-      <button id="save">Save</button>
-    </fieldset>
-    <fieldset>
-      <legend>This site</legend>
-      <div id="host"></div>
-      <button id="allow">Track this site</button>
-      <button id="disallow">Stop</button>
-    </fieldset>
-    <div id="status"></div>
-    <script src="popup.js"></script>
-  </body>
+    <head>
+        <meta charset="utf-8" />
+        <link rel="stylesheet" href="ui.css" />
+    </head>
+    <body class="popup">
+        <header class="bar">
+            <span class="brand">watch<b>·</b>trail</span>
+            <label class="switch"
+                ><input type="checkbox" id="enabled" /><span
+                    class="slider"
+                ></span
+            ></label>
+        </header>
+
+        <div class="pill" id="pill">
+            <span class="dot"></span><span id="pillText">Checking…</span>
+        </div>
+
+        <div class="card">
+            <div class="host" id="host"></div>
+            <button class="btn primary" id="track">Track this site</button>
+            <button class="btn danger" id="stop" hidden>Stop tracking</button>
+        </div>
+
+        <div class="inline-status" id="status"></div>
+
+        <a href="#" class="settings-link" id="settings">Settings →</a>
+
+        <script src="popup.js"></script>
+    </body>
 </html>

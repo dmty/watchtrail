@@ -1,5 +1,6 @@
 import { withDefaults, type Config } from "./config";
 import { registerGeneric, unregisterGeneric } from "./registration";
+import { probeCore } from "./probe";
 
 const CONFIG_KEY = "watchtrail_config";
 
@@ -20,6 +21,13 @@ function setStatus(text: string): void {
   el("status").textContent = text;
 }
 
+function renderPill(state: "ok" | "warn" | "err", text: string): void {
+  const pill = el("pill");
+  pill.classList.remove("ok", "warn", "err");
+  pill.classList.add(state);
+  el("pillText").textContent = text;
+}
+
 async function currentHost(): Promise<string | null> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.url) return null;
@@ -30,14 +38,24 @@ async function currentHost(): Promise<string | null> {
   }
 }
 
+function renderTrackButtons(tracked: boolean): void {
+  el<HTMLButtonElement>("track").hidden = tracked;
+  el<HTMLButtonElement>("stop").hidden = !tracked;
+}
+
 async function init(): Promise<void> {
   const cfg = await load();
   el<HTMLInputElement>("enabled").checked = cfg.enabled;
-  el<HTMLInputElement>("coreUrl").value = cfg.coreUrl;
-  el<HTMLInputElement>("token").value = cfg.token;
 
   const host = await currentHost();
   el("host").textContent = host ?? "(no site)";
+  renderTrackButtons(host !== null && cfg.allowlist.includes(host));
+
+  void probeCore(cfg.coreUrl, cfg.token).then((r) => {
+    if (r.state === "not-configured") renderPill("warn", "Not configured");
+    else if (r.state === "reachable") renderPill("ok", "Core reachable");
+    else renderPill("err", "Unreachable");
+  });
 
   el("enabled").addEventListener("change", async () => {
     const c = await load();
@@ -45,15 +63,7 @@ async function init(): Promise<void> {
     await save(c);
   });
 
-  el("save").addEventListener("click", async () => {
-    const c = await load();
-    c.coreUrl = el<HTMLInputElement>("coreUrl").value.trim();
-    c.token = el<HTMLInputElement>("token").value;
-    await save(c);
-    setStatus("Saved.");
-  });
-
-  el("allow").addEventListener("click", async () => {
+  el("track").addEventListener("click", async () => {
     if (!host) return;
     const granted = await chrome.permissions.request({
       origins: [`*://${host}/*`],
@@ -66,16 +76,23 @@ async function init(): Promise<void> {
     if (!c.allowlist.includes(host)) c.allowlist.push(host);
     await save(c);
     await registerGeneric(host);
+    renderTrackButtons(true);
     setStatus(`Tracking ${host}.`);
   });
 
-  el("disallow").addEventListener("click", async () => {
+  el("stop").addEventListener("click", async () => {
     if (!host) return;
     const c = await load();
     c.allowlist = c.allowlist.filter((h) => h !== host);
     await save(c);
     await unregisterGeneric(host);
+    renderTrackButtons(false);
     setStatus(`Stopped ${host}.`);
+  });
+
+  el("settings").addEventListener("click", (e) => {
+    e.preventDefault();
+    chrome.runtime.openOptionsPage();
   });
 }
 
