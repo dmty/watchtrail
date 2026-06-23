@@ -28,8 +28,8 @@ func LoadOrCreateKey(dataDir string) (key []byte, created bool, err error) {
 	path := KeyPath(dataDir)
 	raw, err := os.ReadFile(path)
 	if err == nil {
-		decoded, derr := hex.DecodeString(strings.TrimSpace(string(raw)))
-		if derr != nil || len(decoded) != keyBytes {
+		decoded, err := hex.DecodeString(strings.TrimSpace(string(raw)))
+		if err != nil || len(decoded) != keyBytes {
 			return nil, false, fmt.Errorf("auth.key: malformed (expected %d hex bytes)", keyBytes)
 		}
 		return decoded, false, nil
@@ -41,7 +41,8 @@ func LoadOrCreateKey(dataDir string) (key []byte, created bool, err error) {
 	if _, err := rand.Read(key); err != nil {
 		return nil, false, fmt.Errorf("auth.key: rand: %w", err)
 	}
-	if err := os.WriteFile(path, []byte(hex.EncodeToString(key)+"\n"), 0o600); err != nil {
+	keyHex := hex.EncodeToString(key) + "\n"
+	if err := os.WriteFile(path, []byte(keyHex), 0o600); err != nil {
 		return nil, false, fmt.Errorf("auth.key: write: %w", err)
 	}
 	return key, true, nil
