@@ -145,11 +145,13 @@ func runServe(cfgPath string) error {
 	root.Handle("/", authMW(webHandler))
 
 	if cfg.MDNSEnabled {
-		if _, port, err := net.SplitHostPort(cfg.HTTPAddr); err == nil {
-			portInt, perr := strconv.Atoi(port)
-			if perr == nil {
-				if _, derr := discovery.Register(ctx, cfg.MDNSHostname, portInt); derr != nil {
-					log.Printf("mdns: %v (continuing without)", derr)
+		_, port, err := net.SplitHostPort(cfg.HTTPAddr)
+		if err == nil {
+			portInt, err := strconv.Atoi(port)
+			if err == nil {
+				_, err := discovery.Register(ctx, cfg.MDNSHostname, portInt)
+				if err != nil {
+					log.Printf("mdns: %v (continuing without)", err)
 				} else {
 					log.Printf("mdns: advertising %s._http._tcp.local on port %d", cfg.MDNSHostname, portInt)
 				}
