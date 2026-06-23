@@ -88,6 +88,12 @@ func TestMiddleware_SetupLink_SetsCookieAndRedirects(t *testing.T) {
 	if !got.HttpOnly || got.SameSite != http.SameSiteStrictMode {
 		t.Errorf("cookie not hardened: %+v", got)
 	}
+	if got.Path != "/" {
+		t.Errorf("cookie Path = %q, want %q", got.Path, "/")
+	}
+	if got.MaxAge != cookieMaxAge {
+		t.Errorf("cookie MaxAge = %d, want %d", got.MaxAge, cookieMaxAge)
+	}
 }
 
 func TestMiddleware_WrongSetup_FallsThroughTo401(t *testing.T) {

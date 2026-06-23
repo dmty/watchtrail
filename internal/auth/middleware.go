@@ -24,8 +24,10 @@ func Middleware(key []byte) func(http.Handler) http.Handler {
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if setup := r.URL.Query().Get(SetupQueryParam); setup != "" {
-				if subtle.ConstantTimeCompare([]byte(setup), expected) == 1 {
+			q := r.URL.Query()
+			if setup := q.Get(SetupQueryParam); setup != "" {
+				candidate := []byte(setup)
+				if len(candidate) == len(expected) && subtle.ConstantTimeCompare(candidate, expected) == 1 {
 					http.SetCookie(w, &http.Cookie{
 						Name:     CookieName,
 						Value:    HexKey(key),
@@ -34,7 +36,6 @@ func Middleware(key []byte) func(http.Handler) http.Handler {
 						SameSite: http.SameSiteStrictMode,
 						MaxAge:   cookieMaxAge,
 					})
-					q := r.URL.Query()
 					q.Del(SetupQueryParam)
 					u := *r.URL
 					u.RawQuery = q.Encode()
@@ -45,7 +46,9 @@ func Middleware(key []byte) func(http.Handler) http.Handler {
 			}
 
 			c, err := r.Cookie(CookieName)
-			if err != nil || subtle.ConstantTimeCompare([]byte(c.Value), expected) != 1 {
+			if err != nil ||
+				len(c.Value) != len(string(expected)) ||
+				subtle.ConstantTimeCompare([]byte(c.Value), expected) != 1 {
 				unauthorized(w)
 				return
 			}
