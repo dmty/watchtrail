@@ -11,8 +11,9 @@ import (
 	"watchtrail/internal/store"
 )
 
-// Handler builds the read-only /api/v1 router over repo. Read-only and
-// loopback-only: no auth (ingestion is separately token-gated).
+// Handler builds the read-only /api/v1 router over repo. Read-only. Auth is
+// applied at the parent mux level (cmd/watchtrail/main.go); ingestion is
+// separately token-gated at /ingest.
 func Handler(repo store.Repository) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/v1/sessions", handleSessions(repo))

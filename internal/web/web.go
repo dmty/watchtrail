@@ -9,10 +9,11 @@ import (
 	"watchtrail/internal/thumb"
 )
 
-// Handler builds the dashboard router over repo. Server-rendered, loopback-only,
-// no auth (same posture as the read API). broker drives the live-update SSE
-// stream. Returns an error if templates fail to parse, so the caller can fail
-// fast at startup.
+// Handler builds the dashboard router over repo. Server-rendered. Auth is
+// applied at the parent mux level (cmd/watchtrail/main.go) — this package
+// does not gate requests itself. broker drives the live-update SSE stream.
+// Returns an error if templates fail to parse, so the caller can fail fast at
+// startup.
 func Handler(repo store.Repository, broker *events.Broker, thumbs *thumb.Chain) (http.Handler, error) {
 	rn, err := newRenderer()
 	if err != nil {
