@@ -47,7 +47,7 @@ func Middleware(key []byte) func(http.Handler) http.Handler {
 
 			c, err := r.Cookie(CookieName)
 			if err != nil ||
-				len(c.Value) != len(string(expected)) ||
+				len(c.Value) != len(expected) ||
 				subtle.ConstantTimeCompare([]byte(c.Value), expected) != 1 {
 				unauthorized(w)
 				return
