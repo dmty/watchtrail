@@ -109,3 +109,68 @@ func TestThumbnailOverride(t *testing.T) {
 		t.Errorf("ThumbsDir = %q", cfg.ThumbsDir)
 	}
 }
+
+func TestNewFieldDefaults(t *testing.T) {
+	cfg, err := Load(filepath.Join(t.TempDir(), "nope.toml"))
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.MDNSEnabled != true {
+		t.Errorf("MDNSEnabled = %v, want true", cfg.MDNSEnabled)
+	}
+	if cfg.MDNSHostname != "watchtrail" {
+		t.Errorf("MDNSHostname = %q, want %q", cfg.MDNSHostname, "watchtrail")
+	}
+	if cfg.AuthDisabled != false {
+		t.Errorf("AuthDisabled = %v, want false", cfg.AuthDisabled)
+	}
+	// DataDir defaults to dir of DBPath. Default DBPath is "watchtrail.db" (cwd).
+	if cfg.DataDir != "." {
+		t.Errorf("DataDir = %q, want %q", cfg.DataDir, ".")
+	}
+}
+
+func TestDataDirFollowsDBPathByDefault(t *testing.T) {
+	t.Setenv("WATCHTRAIL_DB_PATH", "/srv/wt/wt.db")
+	cfg, err := Load(filepath.Join(t.TempDir(), "nope.toml"))
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.DataDir != "/srv/wt" {
+		t.Errorf("DataDir = %q, want %q", cfg.DataDir, "/srv/wt")
+	}
+}
+
+func TestDataDirExplicitOverride(t *testing.T) {
+	t.Setenv("WATCHTRAIL_DB_PATH", "/srv/wt/wt.db")
+	t.Setenv("WATCHTRAIL_DATA_DIR", "/var/lib/watchtrail")
+	cfg, err := Load(filepath.Join(t.TempDir(), "nope.toml"))
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.DataDir != "/var/lib/watchtrail" {
+		t.Errorf("DataDir = %q, want explicit override", cfg.DataDir)
+	}
+}
+
+func TestMDNSToggleViaEnv(t *testing.T) {
+	t.Setenv("WATCHTRAIL_MDNS_ENABLED", "false")
+	cfg, err := Load(filepath.Join(t.TempDir(), "nope.toml"))
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.MDNSEnabled {
+		t.Errorf("MDNSEnabled = true, want false")
+	}
+}
+
+func TestAuthDisabledViaEnv(t *testing.T) {
+	t.Setenv("WATCHTRAIL_AUTH_DISABLED", "true")
+	cfg, err := Load(filepath.Join(t.TempDir(), "nope.toml"))
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if !cfg.AuthDisabled {
+		t.Errorf("AuthDisabled = false, want true")
+	}
+}

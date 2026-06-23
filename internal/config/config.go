@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io/fs"
 	"os"
+	"path/filepath"
 
 	"github.com/BurntSushi/toml"
 )
@@ -21,6 +22,10 @@ type Config struct {
 	ProgressCadenceSeconds int      `toml:"progress_cadence_seconds"`
 	ThumbnailSources       []string `toml:"thumbnail_sources"`
 	ThumbsDir              string   `toml:"thumbs_dir"`
+	DataDir                string   `toml:"data_dir"`
+	MDNSEnabled            bool     `toml:"mdns_enabled"`
+	MDNSHostname           string   `toml:"mdns_hostname"`
+	AuthDisabled           bool     `toml:"auth_disabled"`
 }
 
 func defaults() Config {
@@ -34,6 +39,8 @@ func defaults() Config {
 		ProgressCadenceSeconds: 30,
 		ThumbnailSources:       []string{"sidecar", "frame"},
 		ThumbsDir:              "",
+		MDNSEnabled:            true,
+		MDNSHostname:           "watchtrail",
 	}
 }
 
@@ -62,6 +69,22 @@ func Load(cfgPath string) (Config, error) {
 	}
 	if v, ok := os.LookupEnv("WATCHTRAIL_THUMBS_DIR"); ok {
 		cfg.ThumbsDir = v
+	}
+	if v, ok := os.LookupEnv("WATCHTRAIL_DATA_DIR"); ok {
+		cfg.DataDir = v
+	}
+	if v, ok := os.LookupEnv("WATCHTRAIL_MDNS_ENABLED"); ok {
+		cfg.MDNSEnabled = v == "true" || v == "1"
+	}
+	if v, ok := os.LookupEnv("WATCHTRAIL_MDNS_HOSTNAME"); ok {
+		cfg.MDNSHostname = v
+	}
+	if v, ok := os.LookupEnv("WATCHTRAIL_AUTH_DISABLED"); ok {
+		cfg.AuthDisabled = v == "true" || v == "1"
+	}
+	// DataDir defaults to dir of DBPath if still unset.
+	if cfg.DataDir == "" {
+		cfg.DataDir = filepath.Dir(cfg.DBPath)
 	}
 	return cfg, nil
 }
