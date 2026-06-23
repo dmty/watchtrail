@@ -11,11 +11,14 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"syscall"
 	"time"
 
 	"watchtrail/internal/api"
+	"watchtrail/internal/auth"
 	"watchtrail/internal/config"
+	"watchtrail/internal/discovery"
 	"watchtrail/internal/events"
 	"watchtrail/internal/ingest"
 	"watchtrail/internal/sessionize"
@@ -52,13 +55,17 @@ func main() {
 		if err := runRebuild(os.Args[2:]); err != nil {
 			log.Fatalf("watchtrail: %v", err)
 		}
+	case "print-link":
+		if err := runPrintLink(os.Args[2:]); err != nil {
+			log.Fatalf("watchtrail: %v", err)
+		}
 	default:
 		usage()
 	}
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: watchtrail <serve|recent|item|stats|rebuild-sessions> [flags]")
+	fmt.Fprintln(os.Stderr, "usage: watchtrail <serve|recent|item|stats|rebuild-sessions|print-link> [flags]")
 	os.Exit(2)
 }
 
@@ -66,6 +73,25 @@ func runServe(cfgPath string) error {
 	cfg, err := config.Load(cfgPath)
 	if err != nil {
 		return fmt.Errorf("config: %w", err)
+	}
+
+	if err := os.MkdirAll(cfg.DataDir, 0o755); err != nil {
+		return fmt.Errorf("data dir: %w", err)
+	}
+
+	if cfg.AuthDisabled && !isLoopback(cfg.HTTPAddr) {
+		return fmt.Errorf("refusing to bind %s with auth_disabled=true; set auth_disabled=false or bind to 127.0.0.1", cfg.HTTPAddr)
+	}
+
+	var (
+		authKey     []byte
+		authCreated bool
+	)
+	if !cfg.AuthDisabled {
+		authKey, authCreated, err = auth.LoadOrCreateKey(cfg.DataDir)
+		if err != nil {
+			return fmt.Errorf("auth: %w", err)
+		}
 	}
 
 	repo, err := store.Open(cfg.DBPath)
@@ -109,10 +135,28 @@ func runServe(cfgPath string) error {
 	if err != nil {
 		return fmt.Errorf("web: %w", err)
 	}
+	authMW := func(h http.Handler) http.Handler { return h }
+	if !cfg.AuthDisabled {
+		authMW = auth.Middleware(authKey)
+	}
 	root := http.NewServeMux()
 	root.Handle("/ingest", pipeline.HTTPHandler(cfg.Token))
-	root.Handle("/api/v1/", api.Handler(repo))
-	root.Handle("/", webHandler)
+	root.Handle("/api/v1/", authMW(api.Handler(repo)))
+	root.Handle("/", authMW(webHandler))
+
+	if cfg.MDNSEnabled {
+		if _, port, err := net.SplitHostPort(cfg.HTTPAddr); err == nil {
+			portInt, perr := strconv.Atoi(port)
+			if perr == nil {
+				if _, derr := discovery.Register(ctx, cfg.MDNSHostname, portInt); derr != nil {
+					log.Printf("mdns: %v (continuing without)", derr)
+				} else {
+					log.Printf("mdns: advertising %s._http._tcp.local on port %d", cfg.MDNSHostname, portInt)
+				}
+			}
+		}
+	}
+
 	httpSrv := &http.Server{Addr: cfg.HTTPAddr, Handler: root}
 	go func() {
 		log.Printf("ingest http://%s/ingest · API http://%s/api/v1 · dashboard http://%s/", cfg.HTTPAddr, cfg.HTTPAddr, cfg.HTTPAddr)
@@ -120,6 +164,15 @@ func runServe(cfgPath string) error {
 			httpErr <- err
 		}
 	}()
+
+	if !cfg.AuthDisabled {
+		setupURL := buildSetupURL(cfg.HTTPAddr, auth.HexKey(authKey))
+		if authCreated {
+			log.Printf("setup link (first-run, save this): %s", setupURL)
+		} else {
+			log.Printf("auth.key loaded from %s — get a fresh setup link with `watchtrail print-link`", auth.KeyPath(cfg.DataDir))
+		}
+	}
 
 	var runErr error
 	select {
@@ -137,4 +190,16 @@ func runServe(cfgPath string) error {
 	}
 	<-tcpDone // wait for TCP connections to drain before repo.Close (deferred)
 	return runErr
+}
+
+func isLoopback(addr string) bool {
+	host, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		return false
+	}
+	switch host {
+	case "127.0.0.1", "localhost", "::1", "[::1]":
+		return true
+	}
+	return false
 }
