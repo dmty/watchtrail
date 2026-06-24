@@ -67,9 +67,27 @@ func TestEnsureLeafFreshRenews(t *testing.T) {
 	if err := EnsureLeafFresh(dir, []string{"watchtrail.local"}, t0.AddDate(0, 0, 370)); err != nil {
 		t.Fatal(err)
 	}
+	renewTime := t0.AddDate(0, 0, 370)
 	after := parseLeaf(t, dir).NotAfter
 	if !after.After(before) {
 		t.Fatalf("expected renewal to extend NotAfter; before=%v after=%v", before, after)
+	}
+
+	caPEM, err := os.ReadFile(CACertPath(dir))
+	if err != nil {
+		t.Fatal(err)
+	}
+	pool := x509.NewCertPool()
+	if !pool.AppendCertsFromPEM(caPEM) {
+		t.Fatal("could not append CA")
+	}
+	renewed := parseLeaf(t, dir)
+	if _, err := renewed.Verify(x509.VerifyOptions{
+		DNSName:     "watchtrail.local",
+		Roots:       pool,
+		CurrentTime: renewTime,
+	}); err != nil {
+		t.Fatalf("renewed leaf does not verify against CA: %v", err)
 	}
 }
 

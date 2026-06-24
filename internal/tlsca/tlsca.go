@@ -46,7 +46,7 @@ func Enabled(dataDir string) bool {
 // Enable ensures a CA exists (creating it on first call, caCreated=true) and
 // (re)mints the leaf for hosts. Returns the CA cert path for trust install.
 func Enable(dataDir string, hosts []string, now time.Time) (caCertPath string, caCreated bool, err error) {
-	if err := os.MkdirAll(Dir(dataDir), 0o755); err != nil {
+	if err := os.MkdirAll(Dir(dataDir), 0o700); err != nil {
 		return "", false, fmt.Errorf("tls dir: %w", err)
 	}
 	caCreated, err = ensureCA(dataDir, now)
