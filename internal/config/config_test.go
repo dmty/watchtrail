@@ -175,21 +175,21 @@ func TestAuthDisabledViaEnv(t *testing.T) {
 	}
 }
 
-func TestDefaultTLSAddr(t *testing.T) {
-	cfg, err := Load("does-not-exist.toml")
+func TestTLSAddrEnvOverride(t *testing.T) {
+	// Default value when no env set
+	cfg, err := Load(filepath.Join(t.TempDir(), "nope.toml"))
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("Load: %v", err)
 	}
 	if cfg.TLSAddr != ":8443" {
 		t.Fatalf("TLSAddr = %q, want :8443", cfg.TLSAddr)
 	}
-}
 
-func TestTLSAddrEnvOverride(t *testing.T) {
+	// Env override
 	t.Setenv("WATCHTRAIL_TLS_ADDR", "0.0.0.0:9443")
-	cfg, err := Load("does-not-exist.toml")
+	cfg, err = Load(filepath.Join(t.TempDir(), "nope.toml"))
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("Load: %v", err)
 	}
 	if cfg.TLSAddr != "0.0.0.0:9443" {
 		t.Fatalf("TLSAddr = %q, want 0.0.0.0:9443", cfg.TLSAddr)
