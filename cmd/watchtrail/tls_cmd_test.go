@@ -45,6 +45,29 @@ func TestEnableTLSGeneratesMaterialsAndDisableRemovesLeaf(t *testing.T) {
 	}
 }
 
+func TestEnableTLSInstallsTrustOnReuse(t *testing.T) {
+	dir := t.TempDir()
+	cfgPath := writeConfig(t, dir)
+
+	calls := 0
+	orig := installTrust
+	installTrust = func(caPath string) error { calls++; return nil }
+	defer func() { installTrust = orig }()
+
+	// First run creates the CA and installs trust.
+	if err := runEnableTLS([]string{"-config", cfgPath}); err != nil {
+		t.Fatalf("first enable-tls: %v", err)
+	}
+	// Second run reuses the existing CA — trust install must STILL run, so a
+	// CA that was never successfully trusted gets installed on re-run.
+	if err := runEnableTLS([]string{"-config", cfgPath}); err != nil {
+		t.Fatalf("second enable-tls: %v", err)
+	}
+	if calls != 2 {
+		t.Fatalf("installTrust called %d times, want 2 (must install on reuse too)", calls)
+	}
+}
+
 func TestEnableTLSRefusesWhenAuthDisabled(t *testing.T) {
 	dir := t.TempDir()
 	cfgPath := filepath.Join(dir, "watchtrail.toml")

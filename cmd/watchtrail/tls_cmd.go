@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"net"
 	"os"
 	"time"
 
@@ -40,14 +39,14 @@ func runEnableTLS(args []string) error {
 	}
 	if created {
 		fmt.Printf("generated local CA at %s\n", caPath)
-		fmt.Println("installing CA into the host trust store (you may be prompted to authenticate)...")
-		if err := installTrust(caPath); err != nil {
-			return fmt.Errorf("install trust: %w", err)
-		}
 	} else {
 		fmt.Printf("reused existing CA at %s (re-minted leaf)\n", caPath)
-		fmt.Printf("If this machine does not trust the CA, run 'enable-tls' again after deleting %s to regenerate and reinstall trust, or add %s to the OS trust store manually.\n",
-			tlsca.Dir(cfg.DataDir), tlsca.CACertPath(cfg.DataDir))
+	}
+	// Always (re)install: a CA that exists but was never successfully trusted
+	// must still be installed on re-run, idempotent on macOS/Linux.
+	fmt.Println("installing CA into the host trust store (you may be prompted to authenticate)...")
+	if err := installTrust(caPath); err != nil {
+		return fmt.Errorf("install trust: %w", err)
 	}
 
 	key, _, err := auth.LoadOrCreateKey(cfg.DataDir)
@@ -56,7 +55,7 @@ func runEnableTLS(args []string) error {
 	}
 	fmt.Println("TLS enabled. Restart the daemon, then open:")
 	fmt.Println("  " + buildSetupURL("https", cfg.TLSAddr, auth.HexKey(key)))
-	fmt.Println("Other devices: trust the CA from http://" + mdnsHost(cfg.HTTPAddr) + "/ca.crt first.")
+	fmt.Printf("Other devices: trust the CA from http://watchtrail.local:%s/ca.crt first.\n", portOf(cfg.HTTPAddr))
 	return nil
 }
 
@@ -77,18 +76,4 @@ func runDisableTLS(args []string) error {
 			tlsca.CACertPath(cfg.DataDir))
 	}
 	return nil
-}
-
-// mdnsHost returns the host portion of addr, substituting the mDNS name for
-// wildcard binds.
-func mdnsHost(addr string) string {
-	host, _, err := net.SplitHostPort(addr)
-	if err != nil {
-		host = addr
-	}
-	switch host {
-	case "", "0.0.0.0", "::":
-		return "watchtrail.local"
-	}
-	return host
 }
