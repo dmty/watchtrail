@@ -121,15 +121,23 @@ func needsRenewal(notAfter, now time.Time) bool {
 	return notAfter.Sub(now) < renewBefore
 }
 
+func genKeyAndSerial() (*ecdsa.PrivateKey, *big.Int, error) {
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		return nil, nil, err
+	}
+	serial, err := randSerial()
+	if err != nil {
+		return nil, nil, err
+	}
+	return key, serial, nil
+}
+
 func ensureCA(dataDir string, now time.Time) (created bool, err error) {
 	if _, statErr := os.Stat(CACertPath(dataDir)); statErr == nil {
 		return false, nil
 	}
-	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	if err != nil {
-		return false, err
-	}
-	serial, err := randSerial()
+	key, serial, err := genKeyAndSerial()
 	if err != nil {
 		return false, err
 	}
@@ -161,11 +169,7 @@ func mintLeaf(dataDir string, hosts []string, now time.Time) error {
 	if err != nil {
 		return err
 	}
-	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	if err != nil {
-		return err
-	}
-	serial, err := randSerial()
+	key, serial, err := genKeyAndSerial()
 	if err != nil {
 		return err
 	}
