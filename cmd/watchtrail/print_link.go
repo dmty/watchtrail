@@ -7,6 +7,7 @@ import (
 
 	"watchtrail/internal/auth"
 	"watchtrail/internal/config"
+	"watchtrail/internal/tlsca"
 )
 
 func runPrintLink(args []string) error {
@@ -22,14 +23,18 @@ func runPrintLink(args []string) error {
 	if err != nil {
 		return fmt.Errorf("auth: %w", err)
 	}
-	fmt.Println(buildSetupURL(cfg.HTTPAddr, auth.HexKey(key)))
+	scheme, addr := "http", cfg.HTTPAddr
+	if !cfg.AuthDisabled && tlsca.Enabled(cfg.DataDir) {
+		scheme, addr = "https", cfg.TLSAddr
+	}
+	fmt.Println(buildSetupURL(scheme, addr, auth.HexKey(key)))
 	return nil
 }
 
 // buildSetupURL constructs the magic-link URL a user opens in their browser.
-// If addr binds all interfaces, the host is replaced with the mDNS hostname so
-// the link is portable across the user's devices.
-func buildSetupURL(addr, key string) string {
+// A wildcard bind host is replaced with the mDNS hostname so the link is
+// portable across the user's devices; default ports for the scheme are omitted.
+func buildSetupURL(scheme, addr, key string) string {
 	host, port, err := net.SplitHostPort(addr)
 	if err != nil {
 		host, port = addr, ""
@@ -38,8 +43,10 @@ func buildSetupURL(addr, key string) string {
 	case "", "0.0.0.0", "::", "[::]":
 		host = "watchtrail.local"
 	}
-	if port == "" || port == "80" {
-		return fmt.Sprintf("http://%s/?setup=%s", host, key)
+	defaultPort := (scheme == "http" && (port == "" || port == "80")) ||
+		(scheme == "https" && port == "443")
+	if defaultPort {
+		return fmt.Sprintf("%s://%s/?setup=%s", scheme, host, key)
 	}
-	return fmt.Sprintf("http://%s:%s/?setup=%s", host, port, key)
+	return fmt.Sprintf("%s://%s:%s/?setup=%s", scheme, host, port, key)
 }

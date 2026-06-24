@@ -168,7 +168,7 @@ func runServe(cfgPath string) error {
 	}()
 
 	if !cfg.AuthDisabled {
-		setupURL := buildSetupURL(cfg.HTTPAddr, auth.HexKey(authKey))
+		setupURL := buildSetupURL("http", cfg.HTTPAddr, auth.HexKey(authKey))
 		if authCreated {
 			log.Printf("setup link (first-run, save this): %s", setupURL)
 		} else {
