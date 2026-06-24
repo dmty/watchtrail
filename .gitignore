@@ -4,3 +4,7 @@
 *.db-shm
 .DS_Store
 node-compile-cache/
+
+# secrets — never commit
+/auth.key
+/tls/
