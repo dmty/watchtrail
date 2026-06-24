@@ -59,13 +59,21 @@ func main() {
 		if err := runPrintLink(os.Args[2:]); err != nil {
 			log.Fatalf("watchtrail: %v", err)
 		}
+	case "enable-tls":
+		if err := runEnableTLS(os.Args[2:]); err != nil {
+			log.Fatalf("watchtrail: %v", err)
+		}
+	case "disable-tls":
+		if err := runDisableTLS(os.Args[2:]); err != nil {
+			log.Fatalf("watchtrail: %v", err)
+		}
 	default:
 		usage()
 	}
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: watchtrail <serve|recent|item|stats|rebuild-sessions|print-link> [flags]")
+	fmt.Fprintln(os.Stderr, "usage: watchtrail <serve|recent|item|stats|rebuild-sessions|print-link|enable-tls|disable-tls> [flags]")
 	os.Exit(2)
 }
 
