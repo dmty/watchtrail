@@ -40,7 +40,7 @@ func buildSetupURL(scheme, addr, key string) string {
 		host, port = addr, ""
 	}
 	switch host {
-	case "", "0.0.0.0", "::", "[::]":
+	case "", "0.0.0.0", "::":
 		host = "watchtrail.local"
 	}
 	defaultPort := (scheme == "http" && (port == "" || port == "80")) ||

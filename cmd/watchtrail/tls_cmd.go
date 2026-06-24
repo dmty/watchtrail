@@ -46,6 +46,8 @@ func runEnableTLS(args []string) error {
 		}
 	} else {
 		fmt.Printf("reused existing CA at %s (re-minted leaf)\n", caPath)
+		fmt.Printf("If this machine does not trust the CA, run 'enable-tls' again after deleting %s to regenerate and reinstall trust, or add %s to the OS trust store manually.\n",
+			tlsca.Dir(cfg.DataDir), tlsca.CACertPath(cfg.DataDir))
 	}
 
 	key, _, err := auth.LoadOrCreateKey(cfg.DataDir)
@@ -70,6 +72,9 @@ func runDisableTLS(args []string) error {
 	if cmd, err := tlsca.UninstallCommand(tlsca.CACertPath(cfg.DataDir)); err == nil {
 		fmt.Println("The CA is left in your trust store. To remove it, run:")
 		fmt.Println("  " + cmd)
+	} else {
+		fmt.Printf("The CA is left in your trust store. Remove %s from the OS trust store manually.\n",
+			tlsca.CACertPath(cfg.DataDir))
 	}
 	return nil
 }
@@ -82,7 +87,7 @@ func mdnsHost(addr string) string {
 		host = addr
 	}
 	switch host {
-	case "", "0.0.0.0", "::", "[::]":
+	case "", "0.0.0.0", "::":
 		return "watchtrail.local"
 	}
 	return host

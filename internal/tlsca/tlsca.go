@@ -12,6 +12,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"fmt"
+	"log"
 	"math/big"
 	"net"
 	"os"
@@ -94,6 +95,7 @@ func LANHosts() []string {
 	hosts := []string{"watchtrail.local", "localhost", "127.0.0.1", "::1"}
 	ifaces, err := net.Interfaces()
 	if err != nil {
+		log.Printf("tlsca: enumerate interfaces: %v (LAN IP SANs omitted)", err)
 		return hosts
 	}
 	for _, ifi := range ifaces {
