@@ -35,3 +35,20 @@ func TestExplicitShutdownIsIdempotent(t *testing.T) {
 		t.Errorf("expected closed after explicit shutdown")
 	}
 }
+
+func TestRegisterServiceHTTPS(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	svc, err := RegisterService(ctx, "watchtrail", "_https._tcp", 8443)
+	if err != nil {
+		t.Skipf("mdns registration unavailable in this environment: %v", err)
+	}
+	if svc == nil {
+		t.Fatal("expected non-nil service handle")
+	}
+	svc.Shutdown()
+	if !svc.IsClosed() {
+		t.Fatal("service should report closed after Shutdown")
+	}
+}

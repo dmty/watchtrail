@@ -20,11 +20,17 @@ type Service struct {
 	closed chan struct{}
 }
 
-// Register publishes both a service record (hostname._http._tcp.local.) AND a
+// Register publishes the HTTP service (hostname._http._tcp.local.) plus a host
+// record (hostname.local.). See RegisterService for the general form.
+func Register(ctx context.Context, hostname string, port int) (*Service, error) {
+	return RegisterService(ctx, hostname, "_http._tcp", port)
+}
+
+// RegisterService publishes a service record (hostname.<service>.local.) AND a
 // host record (hostname.local.) pointing at the local non-loopback IPs.
 // Returns a handle whose registration is dropped when ctx is cancelled or
 // Shutdown is called, whichever comes first.
-func Register(ctx context.Context, hostname string, port int) (*Service, error) {
+func RegisterService(ctx context.Context, hostname, service string, port int) (*Service, error) {
 	ips, err := nonLoopbackIPs()
 	if err != nil {
 		return nil, fmt.Errorf("enumerate interfaces: %w", err)
@@ -32,7 +38,7 @@ func Register(ctx context.Context, hostname string, port int) (*Service, error) 
 	if len(ips) == 0 {
 		return nil, fmt.Errorf("no non-loopback ips available")
 	}
-	srv, err := zeroconf.RegisterProxy(hostname, "_http._tcp", "local.", port, hostname, ips, nil, nil)
+	srv, err := zeroconf.RegisterProxy(hostname, service, "local.", port, hostname, ips, nil, nil)
 	if err != nil {
 		return nil, err
 	}
