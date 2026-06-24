@@ -1,24 +1,107 @@
-{{define "title"}}Recent — WatchTrail{{end}}
-{{define "content"}}
+{{define "title"}}Recent — WatchTrail{{end}} {{define "content"}}
 <h1>Recent <small>watch log</small></h1>
-<form id="filters" class="filters" hx-get="/" hx-target="#sessions" hx-swap="outerHTML" hx-trigger="change, submit">
-  <input type="text" name="source" placeholder="source" value="{{.Filter.Source}}">
-  <input type="date" name="from" value="{{.Filter.From}}">
-  <input type="date" name="to" value="{{.Filter.To}}">
+<form
+    id="filters"
+    class="filters"
+    hx-get="/"
+    hx-target="#sessions"
+    hx-swap="outerHTML"
+    hx-trigger="change, submit"
+>
+    <input type="date" name="from" value="{{.Filter.From}}" />
+    <input type="date" name="to" value="{{.Filter.To}}" />
+    <div class="src-wrap">
+        <details class="src-select">
+            <summary>
+                <span class="src-current"
+                    >{{if .Filter.Source}}{{.Filter.Source}}{{else}}All
+                    sources{{end}}</span
+                >
+                <span class="src-caret" aria-hidden="true"></span>
+            </summary>
+            <ul class="src-menu" role="listbox" aria-label="source">
+                <li
+                    data-v=""
+                    {{if
+                    not
+                    .Filter.Source}}
+                    aria-selected="true"
+                    {{end}}
+                >
+                    All sources
+                </li>
+                {{$cur := .Filter.Source}}{{range .Sources}}
+                <li
+                    data-v="{{.}}"
+                    {{if
+                    eq
+                    .
+                    $cur}}
+                    aria-selected="true"
+                    {{end}}
+                >
+                    {{.}}
+                </li>
+                {{end}}
+            </ul>
+        </details>
+        <input type="hidden" name="source" value="{{.Filter.Source}}" />
+    </div>
 </form>
 {{template "sessions_rows" .}}
 <script>
-(function () {
-  if (!window.EventSource) return;
-  var t, es = new EventSource('/events');
-  es.addEventListener('update', function () {
-    clearTimeout(t);
-    t = setTimeout(function () {
-      var f = document.getElementById('filters');
-      var qs = f ? new URLSearchParams(new FormData(f)).toString() : '';
-      window.htmx && htmx.ajax('GET', '/?' + qs, { target: '#sessions', swap: 'outerHTML' });
-    }, 300);
-  });
-})();
+    // custom dropdown: <li> click → update hidden input → dispatch change so
+    // the form's hx-trigger="change" fires; click-outside closes the menu.
+    (function () {
+        document.querySelectorAll(".src-select").forEach(function (det) {
+            var wrap = det.parentElement;
+            var inp = wrap.querySelector('input[name="source"]');
+            var cur = det.querySelector(".src-current");
+            det.querySelectorAll(".src-menu li").forEach(function (li) {
+                li.addEventListener("click", function () {
+                    cur.textContent = li.textContent.trim() || "All sources";
+                    inp.value = li.dataset.v || "";
+                    det.querySelectorAll("li[aria-selected]").forEach(
+                        function (x) {
+                            x.removeAttribute("aria-selected");
+                        },
+                    );
+                    li.setAttribute("aria-selected", "true");
+                    det.removeAttribute("open");
+                    inp.dispatchEvent(new Event("change", { bubbles: true }));
+                });
+            });
+        });
+        document.addEventListener("click", function (e) {
+            if (!e.target.closest(".src-select")) {
+                document
+                    .querySelectorAll(".src-select[open]")
+                    .forEach(function (d) {
+                        d.removeAttribute("open");
+                    });
+            }
+        });
+    })();
+</script>
+<script>
+    (function () {
+        if (!window.EventSource) return;
+        var t,
+            es = new EventSource("/events");
+        es.addEventListener("update", function () {
+            clearTimeout(t);
+            t = setTimeout(function () {
+                var f = document.getElementById("filters");
+                var qs = f
+                    ? new URLSearchParams(new FormData(f)).toString()
+                    : "";
+                window.htmx &&
+                    htmx.ajax("GET", "/?" + qs, {
+                        target: "#sessions",
+                        swap: "outerHTML",
+                    });
+            }, 300);
+        });
+    })();
 </script>
 {{end}}

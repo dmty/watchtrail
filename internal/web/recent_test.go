@@ -2,6 +2,7 @@
 package web
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -72,6 +73,35 @@ func TestRecentSourceFilter(t *testing.T) {
 	}
 }
 
+func TestRecentMoreReturnsRowsOnlyFragment(t *testing.T) {
+	base := time.Date(2026, 6, 15, 12, 0, 0, 0, time.UTC)
+	srv := newWebServer(t, func(r *store.SQLiteRepo) {
+		for i := 0; i < recentPageSize+5; i++ {
+			seedWebSession(t, r, fmt.Sprintf("s%d", i), fmt.Sprintf("m%d", i),
+				fmt.Sprintf("Title %d", i), "vlc", base.Add(time.Duration(i)*time.Minute), 60, false)
+		}
+	})
+	// initial htmx fragment has full #sessions wrapper + a More button row
+	_, full := bodyOf(t, srv.URL+"/", true)
+	if !strings.Contains(full, `id="sessions"`) || !strings.Contains(full, `id="more-row"`) {
+		t.Fatalf("initial fragment must have #sessions wrapper and More row: %q", full)
+	}
+	// extract cursor and request next page — must NOT re-wrap in #sessions
+	i := strings.Index(full, "cursor=")
+	if i < 0 {
+		t.Fatalf("missing cursor in More button: %q", full)
+	}
+	end := strings.IndexAny(full[i:], `&"`)
+	cursor := full[i+len("cursor=") : i+end]
+	_, more := bodyOf(t, srv.URL+"/?cursor="+cursor, true)
+	if strings.Contains(more, `id="sessions"`) {
+		t.Fatalf("paginated fragment must not include #sessions wrapper (would replace prior rows): %q", more)
+	}
+	if !strings.Contains(more, "<tr>") {
+		t.Fatalf("paginated fragment must include row(s): %q", more)
+	}
+}
+
 func TestRecentEmptyState(t *testing.T) {
 	srv := newWebServer(t, nil)
 	_, body := bodyOf(t, srv.URL+"/", false)
@@ -83,7 +113,7 @@ func TestRecentEmptyState(t *testing.T) {
 func TestRecentFullPageHasLiveScript(t *testing.T) {
 	srv := newWebServer(t, nil)
 	_, body := bodyOf(t, srv.URL+"/", false)
-	if !strings.Contains(body, "new EventSource('/events')") {
+	if !strings.Contains(body, `EventSource("/events")`) && !strings.Contains(body, "EventSource('/events')") {
 		t.Fatalf("full page should include the live-update script: %q", body)
 	}
 }

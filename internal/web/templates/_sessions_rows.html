@@ -1,24 +1,42 @@
 {{define "sessions_rows"}}
 <div id="sessions">
-  <table>
-    <thead><tr><th>When</th><th>Title</th><th>Source</th><th>Watched</th><th>Done</th></tr></thead>
-    <tbody>
-      {{range .Rows}}
-      <tr>
-        <td>{{localTime .StartedAt}}</td>
-        <td><a href="/item/{{.ID}}">{{.Title}}</a></td>
-        <td><span class="badge">{{sourceBadge .SourceKind}}</span></td>
-        <td class="watched">{{watchedFmt .WatchedSeconds}}</td>
-        <td class="done">{{if .Completed}}✓{{end}}</td>
-      </tr>
-      {{else}}
-      <tr><td colspan="5" class="empty">No history yet</td></tr>
-      {{end}}
-    </tbody>
-  </table>
-  {{if .NextCursor}}
-  <button hx-get="/?source={{.Filter.Source}}&from={{.Filter.From}}&to={{.Filter.To}}&cursor={{.NextCursor}}"
-          hx-target="#sessions" hx-swap="outerHTML">More</button>
-  {{end}}
+    <table>
+        <thead>
+            <tr>
+                <th>When</th>
+                <th>Title</th>
+                <th>Source</th>
+                <th>Watched</th>
+                <th>Done</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{template "session_row_set" .}}
+        </tbody>
+    </table>
 </div>
-{{end}}
+{{end}} {{define "session_row_set"}} {{range .Rows}}
+<tr>
+    <td>{{localTime .StartedAt}}</td>
+    <td><a href="/item/{{.ID}}">{{.Title}}</a></td>
+    <td><span class="badge">{{sourceBadge .SourceKind}}</span></td>
+    <td class="watched">{{watchedFmt .WatchedSeconds}}</td>
+    <td class="done">{{if .Completed}}✓{{end}}</td>
+</tr>
+{{else}}
+<tr>
+    <td colspan="5" class="empty">No history yet</td>
+</tr>
+{{end}} {{if .NextCursor}}
+<tr id="more-row">
+    <td colspan="5">
+        <button
+            hx-get="/?source={{.Filter.Source}}&from={{.Filter.From}}&to={{.Filter.To}}&cursor={{.NextCursor}}"
+            hx-target="#more-row"
+            hx-swap="outerHTML"
+        >
+            More
+        </button>
+    </td>
+</tr>
+{{end}} {{end}}

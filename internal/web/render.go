@@ -5,7 +5,6 @@ import (
 	"embed"
 	"fmt"
 	"html/template"
-	"io"
 	"net/http"
 	"time"
 )
@@ -89,15 +88,19 @@ func newRenderer() (*renderer, error) {
 }
 
 // page renders the full base layout for the named page.
-func (rn *renderer) page(w io.Writer, name string, data any) error {
+func (rn *renderer) page(w http.ResponseWriter, name string, data any) error {
 	t, ok := rn.pages[name]
 	if !ok {
 		return fmt.Errorf("unknown page %q", name)
 	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	return t.ExecuteTemplate(w, "base", data)
 }
 
-// fragment renders a named partial block (for htmx).
-func (rn *renderer) fragment(w io.Writer, name string, data any) error {
+// fragment renders a named partial block (for htmx). Content-Type is set
+// explicitly so Go's sniffer doesn't tag bare-<tr> partials as text/plain,
+// which would make htmx refuse to swap them.
+func (rn *renderer) fragment(w http.ResponseWriter, name string, data any) error {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	return rn.fragments.ExecuteTemplate(w, name, data)
 }

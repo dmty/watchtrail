@@ -31,12 +31,14 @@ func TestRendererBuildsAndRendersFragment(t *testing.T) {
 	if err != nil {
 		t.Fatalf("newRenderer: %v", err)
 	}
-	var sb strings.Builder
-	// empty rows + no cursor renders the empty-state text without error
-	if err := rnd.fragment(&sb, "sessions_rows", recentFragmentData{}); err != nil {
+	rec := httptest.NewRecorder()
+	if err := rnd.fragment(rec, "sessions_rows", recentFragmentData{}); err != nil {
 		t.Fatalf("fragment: %v", err)
 	}
-	if !strings.Contains(sb.String(), "No history yet") {
-		t.Fatalf("empty fragment = %q", sb.String())
+	if !strings.Contains(rec.Body.String(), "No history yet") {
+		t.Fatalf("empty fragment = %q", rec.Body.String())
+	}
+	if ct := rec.Header().Get("Content-Type"); ct != "text/html; charset=utf-8" {
+		t.Fatalf("fragment must set text/html (htmx refuses text/plain swaps), got %q", ct)
 	}
 }

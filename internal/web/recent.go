@@ -33,6 +33,7 @@ type recentFragmentData struct {
 
 type recentPageData struct {
 	recentFragmentData
+	Sources []string // distinct source_kind values, for the filter select
 }
 
 // parseDateParam parses an optional YYYY-MM-DD query param into *time.Time
@@ -71,10 +72,19 @@ func handleRecent(repo store.Repository, rn *renderer) http.HandlerFunc {
 			Filter:     filter,
 		}
 		if isHTMX(r) {
-			_ = rn.fragment(w, "sessions_rows", data)
+			name := "sessions_rows"
+			if q.Get("cursor") != "" {
+				name = "session_row_set"
+			}
+			_ = rn.fragment(w, name, data)
 			return
 		}
-		_ = rn.page(w, "recent", recentPageData{recentFragmentData: data})
+		stats, _ := repo.StatsBySource(r.Context(), nil, nil)
+		sources := make([]string, 0, len(stats))
+		for _, s := range stats {
+			sources = append(sources, s.Source)
+		}
+		_ = rn.page(w, "recent", recentPageData{recentFragmentData: data, Sources: sources})
 	}
 }
 
