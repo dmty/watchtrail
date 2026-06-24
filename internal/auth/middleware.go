@@ -33,6 +33,7 @@ func Middleware(key []byte) func(http.Handler) http.Handler {
 						Value:    HexKey(key),
 						Path:     "/",
 						HttpOnly: true,
+						Secure:   r.TLS != nil,
 						SameSite: http.SameSiteStrictMode,
 						MaxAge:   cookieMaxAge,
 					})

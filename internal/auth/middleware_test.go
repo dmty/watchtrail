@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"crypto/tls"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -165,5 +166,42 @@ func TestMiddleware_BadCookieRejected(t *testing.T) {
 	body, _ := io.ReadAll(rec.Result().Body)
 	if !strings.Contains(string(body), "watchtrail print-link") {
 		t.Errorf("body = %q, want hint", string(body))
+	}
+}
+
+func TestSetupCookieSecureOverTLS(t *testing.T) {
+	key := make([]byte, 32)
+	mw := Middleware(key)
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
+
+	req := httptest.NewRequest(http.MethodGet, "https://watchtrail.local:8443/?setup="+HexKey(key), nil)
+	req.TLS = &tls.ConnectionState{}
+	rec := httptest.NewRecorder()
+	mw(next).ServeHTTP(rec, req)
+
+	cookies := rec.Result().Cookies()
+	if len(cookies) != 1 {
+		t.Fatalf("expected 1 cookie, got %d", len(cookies))
+	}
+	if !cookies[0].Secure {
+		t.Fatal("cookie set over HTTPS must have Secure=true")
+	}
+}
+
+func TestSetupCookieNotSecureOverHTTP(t *testing.T) {
+	key := make([]byte, 32)
+	mw := Middleware(key)
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
+
+	req := httptest.NewRequest(http.MethodGet, "http://watchtrail.local/?setup="+HexKey(key), nil)
+	rec := httptest.NewRecorder()
+	mw(next).ServeHTTP(rec, req)
+
+	cookies := rec.Result().Cookies()
+	if len(cookies) != 1 {
+		t.Fatalf("expected 1 cookie, got %d", len(cookies))
+	}
+	if cookies[0].Secure {
+		t.Fatal("cookie set over HTTP must not have Secure=true")
 	}
 }
