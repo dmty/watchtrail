@@ -139,7 +139,7 @@ func runServe(cfgPath string) error {
 	}
 	thumbs := thumb.Build(thumbsDir, cfg.ThumbnailSources)
 
-	httpErr := make(chan error, 1)
+	httpErr := make(chan error, 2)
 	webHandler, err := web.Handler(repo, broker, thumbs)
 	if err != nil {
 		return fmt.Errorf("web: %w", err)

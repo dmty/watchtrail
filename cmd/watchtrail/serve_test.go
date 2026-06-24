@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 
@@ -133,17 +132,8 @@ func TestHTTPSRedirect(t *testing.T) {
 		t.Fatalf("status = %d, want 308", rec.Code)
 	}
 	loc := rec.Header().Get("Location")
-	if !strings.HasPrefix(loc, "https://") {
-		t.Fatalf("Location %q does not start with https://", loc)
-	}
-	if !strings.Contains(loc, ":8443") {
-		t.Fatalf("Location %q does not contain port 8443", loc)
-	}
-	if !strings.Contains(loc, "/some/path") {
-		t.Fatalf("Location %q does not preserve path", loc)
-	}
-	if !strings.Contains(loc, "x=1") {
-		t.Fatalf("Location %q does not preserve query", loc)
+	if loc != "https://watchtrail.local:8443/some/path?x=1" {
+		t.Fatalf("Location = %q", loc)
 	}
 }
 
