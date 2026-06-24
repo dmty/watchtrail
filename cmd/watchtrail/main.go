@@ -24,6 +24,7 @@ import (
 	"watchtrail/internal/sessionize"
 	"watchtrail/internal/store"
 	"watchtrail/internal/thumb"
+	"watchtrail/internal/tlsca"
 	"watchtrail/internal/web"
 )
 
@@ -152,31 +153,78 @@ func runServe(cfgPath string) error {
 	root.Handle("/api/v1/", authMW(api.Handler(repo)))
 	root.Handle("/", authMW(webHandler))
 
+	root.Handle("/ca.crt", caCertHandler(cfg.DataDir))
+
+	tlsOn := !cfg.AuthDisabled && tlsca.Enabled(cfg.DataDir)
+	if tlsOn {
+		if err := tlsca.EnsureLeafFresh(cfg.DataDir, tlsca.LANHosts(), time.Now()); err != nil {
+			return fmt.Errorf("tls renew: %w", err)
+		}
+	}
+
 	if cfg.MDNSEnabled {
-		_, port, err := net.SplitHostPort(cfg.HTTPAddr)
-		if err == nil {
-			portInt, err := strconv.Atoi(port)
-			if err == nil {
-				_, err := discovery.Register(ctx, cfg.MDNSHostname, portInt)
-				if err != nil {
+		if _, port, err := net.SplitHostPort(cfg.HTTPAddr); err == nil {
+			if portInt, err := strconv.Atoi(port); err == nil {
+				if _, err := discovery.Register(ctx, cfg.MDNSHostname, portInt); err != nil {
 					log.Printf("mdns: %v (continuing without)", err)
 				} else {
 					log.Printf("mdns: advertising %s._http._tcp.local on port %d", cfg.MDNSHostname, portInt)
 				}
 			}
 		}
+		if tlsOn {
+			if _, port, err := net.SplitHostPort(cfg.TLSAddr); err == nil {
+				if portInt, err := strconv.Atoi(port); err == nil {
+					if _, err := discovery.RegisterService(ctx, cfg.MDNSHostname, "_https._tcp", portInt); err != nil {
+						log.Printf("mdns https: %v (continuing without)", err)
+					} else {
+						log.Printf("mdns: advertising %s._https._tcp.local on port %d", cfg.MDNSHostname, portInt)
+					}
+				}
+			}
+		}
 	}
 
-	httpSrv := &http.Server{Addr: cfg.HTTPAddr, Handler: root}
-	go func() {
-		log.Printf("ingest http://%s/ingest · API http://%s/api/v1 · dashboard http://%s/", cfg.HTTPAddr, cfg.HTTPAddr, cfg.HTTPAddr)
-		if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			httpErr <- err
-		}
-	}()
+	var httpSrv *http.Server
+	var httpsSrv *http.Server
+	if tlsOn {
+		httpsSrv = &http.Server{Addr: cfg.TLSAddr, Handler: root}
+		go func() {
+			log.Printf("HTTPS dashboard on %s (https://%s:%s/)", cfg.TLSAddr, cfg.MDNSHostname+".local", portOf(cfg.TLSAddr))
+			err := httpsSrv.ListenAndServeTLS(tlsca.LeafCertPath(cfg.DataDir), tlsca.LeafKeyPath(cfg.DataDir))
+			if err != nil && err != http.ErrServerClosed {
+				httpErr <- err
+			}
+		}()
+
+		// Plain HTTP keeps /ingest + /ca.crt and redirects everything else.
+		httpMux := http.NewServeMux()
+		httpMux.Handle("/ingest", pipeline.HTTPHandler(cfg.Token))
+		httpMux.Handle("/ca.crt", caCertHandler(cfg.DataDir))
+		httpMux.Handle("/", httpsRedirect(portOf(cfg.TLSAddr)))
+		httpSrv = &http.Server{Addr: cfg.HTTPAddr, Handler: httpMux}
+		go func() {
+			log.Printf("ingest http://%s/ingest · dashboard redirects to HTTPS", cfg.HTTPAddr)
+			if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				httpErr <- err
+			}
+		}()
+	} else {
+		httpSrv = &http.Server{Addr: cfg.HTTPAddr, Handler: root}
+		go func() {
+			log.Printf("ingest http://%s/ingest · API http://%s/api/v1 · dashboard http://%s/", cfg.HTTPAddr, cfg.HTTPAddr, cfg.HTTPAddr)
+			if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				httpErr <- err
+			}
+		}()
+	}
 
 	if !cfg.AuthDisabled {
-		setupURL := buildSetupURL("http", cfg.HTTPAddr, auth.HexKey(authKey))
+		scheme, addr := "http", cfg.HTTPAddr
+		if tlsOn {
+			scheme, addr = "https", cfg.TLSAddr
+		}
+		setupURL := buildSetupURL(scheme, addr, auth.HexKey(authKey))
 		if authCreated {
 			log.Printf("setup link (first-run, save this): %s", setupURL)
 		} else {
@@ -198,8 +246,48 @@ func runServe(cfgPath string) error {
 	if err := httpSrv.Shutdown(shutCtx); err != nil && runErr == nil {
 		runErr = err
 	}
+	if httpsSrv != nil {
+		if err := httpsSrv.Shutdown(shutCtx); err != nil && runErr == nil {
+			runErr = err
+		}
+	}
 	<-tcpDone // wait for TCP connections to drain before repo.Close (deferred)
 	return runErr
+}
+
+// httpsRedirect 308-redirects to HTTPS on tlsPort, preserving host/path/query.
+func httpsRedirect(tlsPort string) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		host := r.Host
+		if h, _, err := net.SplitHostPort(host); err == nil {
+			host = h
+		}
+		u := *r.URL
+		u.Scheme = "https"
+		u.Host = net.JoinHostPort(host, tlsPort)
+		http.Redirect(w, r, u.String(), http.StatusPermanentRedirect)
+	})
+}
+
+// caCertHandler serves the CA cert PEM for manual trust on other devices.
+func caCertHandler(dataDir string) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		pem, err := tlsca.CACertBytes(dataDir)
+		if err != nil {
+			http.Error(w, "no CA certificate", http.StatusNotFound)
+			return
+		}
+		w.Header().Set("Content-Type", "application/x-x509-ca-cert")
+		_, _ = w.Write(pem)
+	})
+}
+
+func portOf(addr string) string {
+	_, port, err := net.SplitHostPort(addr)
+	if err != nil {
+		return addr
+	}
+	return port
 }
 
 func isLoopback(addr string) bool {

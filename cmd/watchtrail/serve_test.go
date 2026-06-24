@@ -4,10 +4,12 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
 	"watchtrail/internal/api"
+	"watchtrail/internal/tlsca"
 	"watchtrail/internal/events"
 	"watchtrail/internal/ingest"
 	"watchtrail/internal/sessionize"
@@ -118,4 +120,56 @@ func TestRootMuxServesEvents(t *testing.T) {
 		t.Fatalf("/events content-type %q", ct)
 	}
 	cancel()
+}
+
+func TestHTTPSRedirect(t *testing.T) {
+	h := httpsRedirect("8443")
+	req := httptest.NewRequest(http.MethodGet, "http://watchtrail.local:8765/some/path?x=1", nil)
+	req.Host = "watchtrail.local:8765"
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusPermanentRedirect {
+		t.Fatalf("status = %d, want 308", rec.Code)
+	}
+	loc := rec.Header().Get("Location")
+	if !strings.HasPrefix(loc, "https://") {
+		t.Fatalf("Location %q does not start with https://", loc)
+	}
+	if !strings.Contains(loc, ":8443") {
+		t.Fatalf("Location %q does not contain port 8443", loc)
+	}
+	if !strings.Contains(loc, "/some/path") {
+		t.Fatalf("Location %q does not preserve path", loc)
+	}
+	if !strings.Contains(loc, "x=1") {
+		t.Fatalf("Location %q does not preserve query", loc)
+	}
+}
+
+func TestCACertHandler404WhenAbsent(t *testing.T) {
+	h := caCertHandler(t.TempDir())
+	req := httptest.NewRequest(http.MethodGet, "http://watchtrail.local/ca.crt", nil)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want 404", rec.Code)
+	}
+}
+
+func TestCACertHandlerServesCA(t *testing.T) {
+	dir := t.TempDir()
+	if _, _, err := tlsca.Enable(dir, []string{"127.0.0.1"}, time.Now()); err != nil {
+		t.Fatalf("enable: %v", err)
+	}
+	h := caCertHandler(dir)
+	req := httptest.NewRequest(http.MethodGet, "http://watchtrail.local/ca.crt", nil)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	if ct := rec.Header().Get("Content-Type"); ct != "application/x-x509-ca-cert" {
+		t.Fatalf("Content-Type = %q, want application/x-x509-ca-cert", ct)
+	}
 }
