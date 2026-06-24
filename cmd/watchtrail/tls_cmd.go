@@ -15,12 +15,15 @@ import (
 // installTrust is a seam so tests can stub the privileged trust-store step.
 var installTrust = tlsca.Install
 
-func runEnableTLS(args []string) error {
-	fs := flag.NewFlagSet("enable-tls", flag.ExitOnError)
+func loadCfg(name string, args []string) (config.Config, error) {
+	fs := flag.NewFlagSet(name, flag.ExitOnError)
 	cfgPath := fs.String("config", "watchtrail.toml", "path to config file")
 	_ = fs.Parse(args)
+	return config.Load(*cfgPath)
+}
 
-	cfg, err := config.Load(*cfgPath)
+func runEnableTLS(args []string) error {
+	cfg, err := loadCfg("enable-tls", args)
 	if err != nil {
 		return fmt.Errorf("config: %w", err)
 	}
@@ -56,11 +59,7 @@ func runEnableTLS(args []string) error {
 }
 
 func runDisableTLS(args []string) error {
-	fs := flag.NewFlagSet("disable-tls", flag.ExitOnError)
-	cfgPath := fs.String("config", "watchtrail.toml", "path to config file")
-	_ = fs.Parse(args)
-
-	cfg, err := config.Load(*cfgPath)
+	cfg, err := loadCfg("disable-tls", args)
 	if err != nil {
 		return fmt.Errorf("config: %w", err)
 	}
