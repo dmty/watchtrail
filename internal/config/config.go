@@ -15,6 +15,7 @@ import (
 type Config struct {
 	HTTPAddr               string   `toml:"http_addr"`
 	TCPAddr                string   `toml:"tcp_addr"`
+	TLSAddr                string   `toml:"tls_addr"`
 	Token                  string   `toml:"token"`
 	DBPath                 string   `toml:"db_path"`
 	SessionGapSeconds      int      `toml:"session_gap_seconds"`
@@ -32,6 +33,7 @@ func defaults() Config {
 	return Config{
 		HTTPAddr:               "127.0.0.1:8765",
 		TCPAddr:                "127.0.0.1:8766",
+		TLSAddr:                ":8443",
 		Token:                  "",
 		DBPath:                 "watchtrail.db",
 		SessionGapSeconds:      1800,
@@ -60,6 +62,9 @@ func Load(cfgPath string) (Config, error) {
 	}
 	if v, ok := os.LookupEnv("WATCHTRAIL_TCP_ADDR"); ok {
 		cfg.TCPAddr = v
+	}
+	if v, ok := os.LookupEnv("WATCHTRAIL_TLS_ADDR"); ok {
+		cfg.TLSAddr = v
 	}
 	if v, ok := os.LookupEnv("WATCHTRAIL_TOKEN"); ok {
 		cfg.Token = v
