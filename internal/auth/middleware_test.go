@@ -169,39 +169,37 @@ func TestMiddleware_BadCookieRejected(t *testing.T) {
 	}
 }
 
-func TestSetupCookieSecureOverTLS(t *testing.T) {
-	key := make([]byte, 32)
-	mw := Middleware(key)
-	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
-
-	req := httptest.NewRequest(http.MethodGet, "https://watchtrail.local:8443/?setup="+HexKey(key), nil)
-	req.TLS = &tls.ConnectionState{}
-	rec := httptest.NewRecorder()
-	mw(next).ServeHTTP(rec, req)
-
-	cookies := rec.Result().Cookies()
-	if len(cookies) != 1 {
-		t.Fatalf("expected 1 cookie, got %d", len(cookies))
+func TestSetupCookieSecure(t *testing.T) {
+	tests := []struct {
+		name       string
+		tls        *tls.ConnectionState
+		wantSecure bool
+	}{
+		{"HTTPS", &tls.ConnectionState{}, true},
+		{"HTTP", nil, false},
 	}
-	if !cookies[0].Secure {
-		t.Fatal("cookie set over HTTPS must have Secure=true")
-	}
-}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			key := make([]byte, 32)
+			mw := Middleware(key)
+			next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
 
-func TestSetupCookieNotSecureOverHTTP(t *testing.T) {
-	key := make([]byte, 32)
-	mw := Middleware(key)
-	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
+			scheme := "https"
+			if tt.tls == nil {
+				scheme = "http"
+			}
+			req := httptest.NewRequest(http.MethodGet, scheme+"://watchtrail.local/?setup="+HexKey(key), nil)
+			req.TLS = tt.tls
+			rec := httptest.NewRecorder()
+			mw(next).ServeHTTP(rec, req)
 
-	req := httptest.NewRequest(http.MethodGet, "http://watchtrail.local/?setup="+HexKey(key), nil)
-	rec := httptest.NewRecorder()
-	mw(next).ServeHTTP(rec, req)
-
-	cookies := rec.Result().Cookies()
-	if len(cookies) != 1 {
-		t.Fatalf("expected 1 cookie, got %d", len(cookies))
-	}
-	if cookies[0].Secure {
-		t.Fatal("cookie set over HTTP must not have Secure=true")
+			cookies := rec.Result().Cookies()
+			if len(cookies) != 1 {
+				t.Fatalf("expected 1 cookie, got %d", len(cookies))
+			}
+			if cookies[0].Secure != tt.wantSecure {
+				t.Errorf("Secure = %v, want %v", cookies[0].Secure, tt.wantSecure)
+			}
+		})
 	}
 }
