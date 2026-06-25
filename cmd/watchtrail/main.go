@@ -163,23 +163,21 @@ func runServe(cfgPath string) error {
 	}
 
 	if cfg.MDNSEnabled {
-		if _, port, err := net.SplitHostPort(cfg.HTTPAddr); err == nil {
+		// One registration only. Two RegisterProxy calls for the same hostname
+		// collide on the watchtrail.local host record and the name gets
+		// withdrawn shortly after startup. Advertise HTTPS when on, HTTP
+		// otherwise; the single host record resolves watchtrail.local for every
+		// port (e.g. plain ingest on HTTPAddr stays reachable by name).
+		service, addr := "_http._tcp", cfg.HTTPAddr
+		if tlsOn {
+			service, addr = "_https._tcp", cfg.TLSAddr
+		}
+		if _, port, err := net.SplitHostPort(addr); err == nil {
 			if portInt, err := strconv.Atoi(port); err == nil {
-				if _, err := discovery.Register(ctx, cfg.MDNSHostname, portInt); err != nil {
+				if _, err := discovery.RegisterService(ctx, cfg.MDNSHostname, service, portInt); err != nil {
 					log.Printf("mdns: %v (continuing without)", err)
 				} else {
-					log.Printf("mdns: advertising %s._http._tcp.local on port %d", cfg.MDNSHostname, portInt)
-				}
-			}
-		}
-		if tlsOn {
-			if _, port, err := net.SplitHostPort(cfg.TLSAddr); err == nil {
-				if portInt, err := strconv.Atoi(port); err == nil {
-					if _, err := discovery.RegisterService(ctx, cfg.MDNSHostname, "_https._tcp", portInt); err != nil {
-						log.Printf("mdns https: %v (continuing without)", err)
-					} else {
-						log.Printf("mdns: advertising %s._https._tcp.local on port %d", cfg.MDNSHostname, portInt)
-					}
+					log.Printf("mdns: advertising %s.%s.local on port %d", cfg.MDNSHostname, service, portInt)
 				}
 			}
 		}
