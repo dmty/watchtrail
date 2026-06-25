@@ -13,8 +13,11 @@ func TestInstallPlanDarwin(t *testing.T) {
 	if p.CopyTo != "" {
 		t.Fatalf("darwin install should not copy, got CopyTo=%q", p.CopyTo)
 	}
+	if p.NeedsSudo {
+		t.Fatalf("darwin install should not need sudo (GUI prompt), got NeedsSudo=true")
+	}
 	got := strings.Join(p.Run, " ")
-	want := "security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain /data/tls/ca.crt"
+	want := "security add-trusted-cert -r trustRoot /data/tls/ca.crt"
 	if got != want {
 		t.Fatalf("Run = %q, want %q", got, want)
 	}
@@ -57,7 +60,7 @@ func TestUninstallPlanDarwin(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := "security remove-trusted-cert -d /data/tls/ca.crt"
+	want := "security remove-trusted-cert /data/tls/ca.crt"
 	if strings.Join(p.Run, " ") != want {
 		t.Fatalf("Run = %q, want %q", strings.Join(p.Run, " "), want)
 	}
