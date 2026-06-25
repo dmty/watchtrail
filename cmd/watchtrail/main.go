@@ -239,6 +239,7 @@ func runServe(cfgPath string) error {
 	}
 
 	log.Print("shutting down")
+	broker.Close() // unblock SSE handlers so Shutdown doesn't wait for them
 	shutCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := httpSrv.Shutdown(shutCtx); err != nil && runErr == nil {

@@ -10,11 +10,27 @@ type Broker struct {
 	mu   sync.Mutex
 	subs map[int]chan string
 	next int
+	done chan struct{}
 }
 
 // New returns a ready Broker.
 func New() *Broker {
-	return &Broker{subs: make(map[int]chan string)}
+	return &Broker{subs: make(map[int]chan string), done: make(chan struct{})}
+}
+
+// Done returns a channel closed by Close. Long-lived subscribers select on it
+// to unblock during server shutdown.
+func (b *Broker) Done() <-chan struct{} { return b.done }
+
+// Close signals subscribers to exit. Idempotent.
+func (b *Broker) Close() {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	select {
+	case <-b.done:
+	default:
+		close(b.done)
+	}
 }
 
 // Subscribe registers a subscriber and returns its signal channel (carrying the

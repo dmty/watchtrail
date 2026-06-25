@@ -36,6 +36,8 @@ func handleEvents(broker *events.Broker) http.HandlerFunc {
 			select {
 			case <-r.Context().Done():
 				return
+			case <-broker.Done():
+				return
 			case <-ticker.C:
 				fmt.Fprint(w, ":\n\n") // heartbeat comment keeps the connection alive
 				flusher.Flush()
